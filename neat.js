@@ -9,7 +9,7 @@ function swap(a, b) {
 }
 function binarySearch(l, r, key, query) {
     if (l > r) {
-        return null;
+        return [l, r];
     }
     var m = Math.floor(l + (r - l) / 2);
     var q = query(m);
@@ -64,7 +64,6 @@ var network = (function () {
     network.prototype.nodeRead = function (id) {
         var inlen = this.input.length;
         var hidlen = this.hidden.length;
-        console.log("read");
         if (id < inlen) {
             return this.input[id];
         }
@@ -78,7 +77,6 @@ var network = (function () {
     network.prototype.nodeWrite = function (node, id) {
         var inlen = this.input.length;
         var hidlen = this.hidden.length;
-        console.log("write");
         node.id = id;
         if (id < inlen) {
             this.input[id] = node;
@@ -108,9 +106,50 @@ var gene = (function () {
 var organism = (function () {
     function organism() {
         this.genome = [];
+        this.maxNeuron = 0;
         this.fitness = 0;
         this.adjFitness = 0;
     }
+    organism.prototype.sort = function () {
+        function compare(a, b) {
+            return a.innovation - b.innovation;
+        }
+        this.genome.sort(compare);
+    };
+    organism.prototype.breed = function (other) {
+        var p1 = this;
+        var p2 = other;
+        if (p1.fitness < p2.fitness) {
+            swap(p1, p2);
+        }
+        var child = new organism();
+        var i = 0;
+        var j = 0;
+        while (i < p1.genome.length && j < p2.genome.length) {
+            while (i < p1.genome.length && j < p2.genome.length && p1.genome[i].innovation == p2.genome[j].innovation) {
+                console.log("a " + i + " " + j);
+                if (!p2.genome[j].enabled) {
+                    child.genome.push(p2.genome[j]);
+                }
+                else {
+                    child.genome.push(p1.genome[i]);
+                }
+                i++;
+                j++;
+            }
+            while (i < p1.genome.length && p1.genome[i].innovation < p2.genome[j].innovation) {
+                console.log("b " + i + " " + j);
+                child.genome.push(p1.genome[i]);
+                i++;
+            }
+            while (j < p2.genome.length && p1.genome[i].innovation > p2.genome[j].innovation) {
+                console.log("c " + i + " " + j);
+                child.genome.push(p2.genome[j]);
+                j++;
+            }
+        }
+        return child;
+    };
     organism.prototype.generate = function (inputs, maxhidden, outputs) {
         this.phenome = new network(inputs, maxhidden, outputs);
         var net = this.phenome;
@@ -123,19 +162,16 @@ var organism = (function () {
                 var s = net.nodeRead(seq[i].start);
                 var e = net.nodeRead(seq[i].end);
                 var w = seq[i].weight;
-                if (s == undefined) {
+                if (s === undefined) {
                     s = new node(nodeType.NEURON, nodePlace.HIDDEN);
                 }
-                if (e == undefined) {
+                if (e === undefined) {
                     e = new node(nodeType.NEURON, nodePlace.HIDDEN);
                 }
                 var lnk = new link(s, e, w);
                 e.nodesIn.push(lnk);
                 s = net.nodeWrite(s, seq[i].start);
                 e = net.nodeWrite(e, seq[i].end);
-                console.log(s);
-                console.log(e);
-                console.log(w);
             }
         }
     };
@@ -150,21 +186,34 @@ var species = (function () {
 }());
 var generation = (function () {
     function generation() {
+        this.innovationCount = 0;
     }
-    generation.prototype.innovationLookup = function (gene) {
-        var len = this.innovations.length;
+    generation.prototype.innovationCheck = function (gene) {
         var start = gene.start;
         var end = gene.end;
-        function query(n) {
-            return this.innovations[start][n].end;
-        }
-        var search = binarySearch(0, this.innovations[start].length, end, query);
-        if (search == null) {
-            return len + 1;
+        if (this.innovations[start][end] === null || this.innovations[start][end] === undefined) {
+            this.innovationCount++;
+            this.innovations[start][end] = this.innovationCount;
+            return this.innovationCount;
         }
         else {
-            return this.innovations[start][search].innovation;
+            return this.innovations[start][end];
         }
     };
     return generation;
 }());
+var gn = new organism();
+var a = new gene(0, 0, 1, 9, false);
+var b = new gene(2, 0, 2, 3, true);
+var c = new gene(8, 1, 2, 4, true);
+var d = new gene(10, 2, 3, 5, true);
+gn.genome = [a, b, c, d];
+var gn2 = new organism();
+gn2.fitness = 1;
+var a = new gene(0, 0, 1, 8, true);
+var b = new gene(1, 0, 2, 3, true);
+var c = new gene(2, 1, 2, 92, true);
+var d = new gene(11, 2, 3, 5, true);
+gn2.genome = [a, b, c, d];
+var gnc = gn.breed(gn2);
+console.log(gnc);

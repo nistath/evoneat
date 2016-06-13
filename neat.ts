@@ -11,7 +11,7 @@ function swap(a: any, b: any): void{
 
 function binarySearch(l: number, r: number, key:number, query: (n:number)=> number){
     if(l>r){
-        return null;
+        return [l,r];
     }
 
     let m=Math.floor(l+(r-l)/2);
@@ -84,7 +84,7 @@ class network{
     nodeRead(id: number): node{
         let inlen=this.input.length;
         let hidlen=this.hidden.length;
-        console.log("read");
+
         if(id<inlen){
             return this.input[id];
         }
@@ -99,8 +99,8 @@ class network{
     nodeWrite(node: node, id: number): node{
         let inlen=this.input.length;
         let hidlen=this.hidden.length;
-        console.log("write");
         node.id=id;
+
         if(id<inlen){
             this.input[id]=node;
             return node;
@@ -134,9 +134,57 @@ class gene{
 
 class organism{
     genome: Array<gene>=[];
+    maxNeuron: number=0;
     fitness: number=0;
     adjFitness: number=0;
     phenome: network;
+
+    sort(){
+        function compare(a,b){
+            return a.innovation-b.innovation;
+        }
+        this.genome.sort(compare);
+    }
+
+    breed(other: organism): organism{
+        let p1=this;
+        let p2=other;
+
+        if(p1.fitness<p2.fitness){
+            swap(p1,p2);
+        }
+
+        let child=new organism();
+        let i=0;
+        let j=0;
+
+        while(i<p1.genome.length && j<p2.genome.length){//when ended
+            while(i<p1.genome.length && j<p2.genome.length && p1.genome[i].innovation==p2.genome[j].innovation){
+                console.log("a "+i+" "+j);
+                if(!p2.genome[j].enabled){
+                    child.genome.push(p2.genome[j]);
+                }
+                else{
+                    child.genome.push(p1.genome[i]);
+                }
+                i++;j++;
+            }
+
+            while(i<p1.genome.length && p1.genome[i].innovation<p2.genome[j].innovation){
+                console.log("b "+i+" "+j);
+                child.genome.push(p1.genome[i]);
+                i++;
+            }
+
+            while(j<p2.genome.length && p1.genome[i].innovation>p2.genome[j].innovation){
+                console.log("c "+i+" "+j);
+                child.genome.push(p2.genome[j]);
+                j++;
+            }
+        }
+
+        return child;
+    }
 
     generate(inputs: number, maxhidden: number, outputs: number){
         this.phenome=new network(inputs, maxhidden, outputs);
@@ -153,10 +201,10 @@ class organism{
                 let e=net.nodeRead(seq[i].end);
                 let w=seq[i].weight;
 
-                if(s==undefined){
+                if(s===undefined){
                     s=new node(nodeType.NEURON, nodePlace.HIDDEN);
                 }
-                if(e==undefined){
+                if(e===undefined){
                     e=new node(nodeType.NEURON, nodePlace.HIDDEN);//but it could be out?
                 }
 
@@ -165,10 +213,6 @@ class organism{
 
                 s=net.nodeWrite(s, seq[i].start);
                 e=net.nodeWrite(e, seq[i].end);
-
-                console.log(s);
-                console.log(e);
-                console.log(w);
             }
         }
     }
@@ -183,33 +227,39 @@ class species{
 }
 
 class generation{
-    innovations: Array<Array<gene>>;
+    innovations: Array<Array<number>>;
+    innovationCount: number=0;
 
-    innovationLookup(gene: gene): number{
-        let len=this.innovations.length;
+    innovationCheck(gene: gene): number{
         let start=gene.start;
         let end=gene.end;
 
-        function query(n: number){
-            return this.innovations[start][n].end;
-        }
-        let search=binarySearch(0, this.innovations[start].length, end, query);
-
-        if(search==null){
-            return len+1;
+        if(this.innovations[start][end]===null || this.innovations[start][end]===undefined){
+            this.innovationCount++;
+            this.innovations[start][end]=this.innovationCount;
+            return this.innovationCount;
         }
         else{
-            return this.innovations[start][search].innovation;
+            return this.innovations[start][end];
         }
     }
 }
 
-/*
+
 var gn=new organism();
-var a=new gene(0,0,1,2,true);
-var b=new gene(1,0,2,3,true);
-var c=new gene(1,1,2,4,true);
-var d=new gene(1,2,3,5,true);
+var a=new gene(0,0,1,9,false);
+var b=new gene(2,0,2,3,true);
+var c=new gene(8,1,2,4,true);
+var d=new gene(10,2,3,5,true);
 gn.genome=[a,b,c,d];
-gn.generate(1,5,1);
-*/
+
+var gn2=new organism();
+gn2.fitness=1;
+var a=new gene(0,0,1,8,true);
+var b=new gene(1,0,2,3,true);
+var c=new gene(2,1,2,92,true);
+var d=new gene(11,2,3,5,true);
+gn2.genome=[a,b,c,d];
+
+var gnc=gn.breed(gn2); //Akoma kai an den isxuei to i<length sts 162 kai meta, mpainei mesa sth while kai tinazetai sto innovation mesa sth while()
+console.log(gnc);
