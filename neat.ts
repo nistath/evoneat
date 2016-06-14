@@ -146,7 +146,7 @@ class organism{
         this.genome.sort(compare);
     }
 
-    breed(other: organism): organism{
+    crossover(other: organism): organism{
         let p1=this;
         let p2=other;
 
@@ -158,27 +158,41 @@ class organism{
         let i=0;
         let j=0;
 
-        while(i<p1.genome.length && j<p2.genome.length){//when ended
-            while(i<p1.genome.length && j<p2.genome.length && p1.genome[i].innovation==p2.genome[j].innovation){
-                console.log("a "+i+" "+j);
-                if(!p2.genome[j].enabled){
-                    child.genome.push(p2.genome[j]);
+        function pair(i: number, j: number){
+            let l=false;
+            let k=false;
+            if(i>=p1.genome.length){
+                i=p1.genome.length-1;
+                l=true;
+            }
+            if(j>=p2.genome.length){
+                j=p2.genome.length-1;
+                k=true;
+            }
+
+            return {a: p1.genome[i], b: p2.genome[j], goa: l, gob: k};
+        }
+
+        while(true){
+            let q=pair(i,j);
+            console.log(q);
+            if(q.goa && q.gob) break;
+            if(q.a.innovation==q.b.innovation){
+                if(!q.b.enabled){
+                    child.genome.push(q.b);
                 }
                 else{
-                    child.genome.push(p1.genome[i]);
+                    child.genome.push(q.a);
                 }
-                i++;j++;
+                i++;
+                j++;
             }
-
-            while(i<p1.genome.length && p1.genome[i].innovation<p2.genome[j].innovation){
-                console.log("b "+i+" "+j);
-                child.genome.push(p1.genome[i]);
+            else if((q.a.innovation<q.b.innovation && !q.goa) || q.gob){
+                child.genome.push(q.a);
                 i++;
             }
-
-            while(j<p2.genome.length && p1.genome[i].innovation>p2.genome[j].innovation){
-                console.log("c "+i+" "+j);
-                child.genome.push(p2.genome[j]);
+            else if((q.a.innovation>q.b.innovation && !q.gob) || q.goa){
+                child.genome.push(q.b);
                 j++;
             }
         }
@@ -244,22 +258,3 @@ class generation{
         }
     }
 }
-
-
-var gn=new organism();
-var a=new gene(0,0,1,9,false);
-var b=new gene(2,0,2,3,true);
-var c=new gene(8,1,2,4,true);
-var d=new gene(10,2,3,5,true);
-gn.genome=[a,b,c,d];
-
-var gn2=new organism();
-gn2.fitness=1;
-var a=new gene(0,0,1,8,true);
-var b=new gene(1,0,2,3,true);
-var c=new gene(2,1,2,92,true);
-var d=new gene(11,2,3,5,true);
-gn2.genome=[a,b,c,d];
-
-var gnc=gn.breed(gn2); //Akoma kai an den isxuei to i<length sts 162 kai meta, mpainei mesa sth while kai tinazetai sto innovation mesa sth while()
-console.log(gnc);
