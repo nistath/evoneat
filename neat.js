@@ -1,7 +1,36 @@
-var cExcess = 10;
-var cDisjoint = 10;
-var cMatching = 10;
+var nInputs = 5;
+var nMaxHidden = 40;
+var nOutputs = 4;
+var cExcess = 1.0;
+var cDisjoint = 1.0;
+var cMatching = 0.4;
+var cSmallGenome = 20;
+var cCull = 0.2;
+var cCrossover = 0.75;
 var deltaThreshold = 10;
+var pDisable = 0.75;
+var pPerturb = 0.8;
+var pPerturbUniform = 0.9;
+var pLink = 0.2;
+var pNode = 0.1;
+var inputs = 5;
+function newWeight() {
+    return Math.random() * 4 - 2;
+}
+var innovations = new Array();
+var innovationCount = 0;
+function innovationCheck(gene) {
+    var start = gene.start;
+    var end = gene.end;
+    if (this.innovations[start][end] === null || this.innovations[start][end] === undefined) {
+        this.innovationCount++;
+        this.innovations[start][end] = this.innovationCount;
+    }
+    return this.innovations[start][end];
+}
+function randInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
 function swap(a, b) {
     var temp = a;
     a = b;
@@ -23,6 +52,8 @@ function binarySearch(l, r, key, query) {
         return binarySearch(m + 1, r, key, query);
     }
 }
+function insertionSort() {
+}
 var nodePlace;
 (function (nodePlace) {
     nodePlace[nodePlace["INPUT"] = 1] = "INPUT";
@@ -31,6 +62,7 @@ var nodePlace;
 })(nodePlace || (nodePlace = {}));
 var nodeType;
 (function (nodeType) {
+    nodeType[nodeType["BIAS"] = -1] = "BIAS";
     nodeType[nodeType["NULL"] = 0] = "NULL";
     nodeType[nodeType["SENSOR"] = 1] = "SENSOR";
     nodeType[nodeType["NEURON"] = 2] = "NEURON";
@@ -56,57 +88,41 @@ var link = (function () {
     return link;
 }());
 var network = (function () {
-    function network(inputs, maxhidden, outputs) {
-        this.input = Array(inputs);
-        this.hidden = Array(maxhidden);
-        this.output = Array(outputs);
+    function network() {
+        this.nodes = Array();
+        this.nodes[0] = new node(nodeType.BIAS, nodePlace.INPUT);
+        for (var i = 1; i < nInputs; i++) {
+            this.nodes[i] = new node(nodeType.SENSOR, nodePlace.INPUT);
+        }
+        for (var o = 1; o < nOutputs; o++) {
+            this.nodes[nMaxHidden + o] = new node(nodeType.NEURON, nodePlace.OUTPUT);
+        }
     }
-    network.prototype.nodeRead = function (id) {
-        var inlen = this.input.length;
-        var hidlen = this.hidden.length;
-        if (id < inlen) {
-            return this.input[id];
-        }
-        else if (id < inlen + hidlen) {
-            return this.hidden[id - inlen];
-        }
-        else {
-            return this.output[id - (inlen + hidlen)];
-        }
-    };
-    network.prototype.nodeWrite = function (node, id) {
-        var inlen = this.input.length;
-        var hidlen = this.hidden.length;
-        node.id = id;
-        if (id < inlen) {
-            this.input[id] = node;
-            return node;
-        }
-        else if (id < inlen + hidlen) {
-            this.hidden[id - inlen] = node;
-            return node;
-        }
-        else {
-            this.output[id - (inlen + hidlen)] = node;
-            return node;
-        }
-    };
     return network;
 }());
 var gene = (function () {
-    function gene(i, st, en, we, n) {
-        this.innovation = i;
-        this.start = st;
-        this.end = en;
-        this.weight = we;
-        this.enabled = n;
+    function gene(s, t, w, e) {
+        this.start = s;
+        this.end = t;
+        this.weight = w;
+        this.enabled = e;
+        this.innovation = innovationCheck(this);
     }
+    gene.prototype.perturb = function () {
+        if (Math.random() < pPerturb) {
+            if (Math.random() < pPerturbUniform) {
+                this.weight *= Math.random();
+            }
+            else {
+                this.weight = newWeight();
+            }
+        }
+    };
     return gene;
 }());
 var organism = (function () {
     function organism() {
         this.genome = [];
-        this.maxNeuron = 0;
         this.fitness = 0;
         this.adjFitness = 0;
     }
@@ -123,59 +139,126 @@ var organism = (function () {
             swap(p1, p2);
         }
         var child = new organism();
-        var i = 0;
-        var j = 0;
-        function pair(i, j) {
-            var l = false;
-            var k = false;
-            if (i >= p1.genome.length) {
-                i = p1.genome.length - 1;
-                l = true;
-            }
-            if (j >= p2.genome.length) {
-                j = p2.genome.length - 1;
-                k = true;
-            }
-            return { a: p1.genome[i], b: p2.genome[j], goa: l, gob: k };
+        var match = new Array();
+        for (var _i = 0, _a = p2.genome; _i < _a.length; _i++) {
+            var val = _a[_i];
+            match[val.innovation] = val;
         }
-        while (true) {
-            var q = pair(i, j);
-            console.log(q);
-            if (q.goa && q.gob)
-                break;
-            if (q.a.innovation == q.b.innovation) {
-                if (!q.b.enabled) {
-                    child.genome.push(q.b);
+        for (var _b = 0, _c = p1.genome; _b < _c.length; _b++) {
+            var val = _c[_b];
+            var push = val;
+            if (match[val.innovation] != undefined) {
+                if (Math.random() < 0.5) {
+                    push = match[val.innovation];
                 }
-                else {
-                    child.genome.push(q.a);
-                }
-                i++;
-                j++;
+                push.enabled = !((!val.enabled || !match[val.innovation].enabled) && Math.random() < pDisable);
             }
-            else if ((q.a.innovation < q.b.innovation && !q.goa) || q.gob) {
-                child.genome.push(q.a);
-                i++;
-            }
-            else if ((q.a.innovation > q.b.innovation && !q.gob) || q.goa) {
-                child.genome.push(q.b);
-                j++;
-            }
+            child.genome.push(push);
         }
         return child;
     };
-    organism.prototype.generate = function (inputs, maxhidden, outputs) {
-        this.phenome = new network(inputs, maxhidden, outputs);
-        var net = this.phenome;
-        var seq = this.genome;
-        for (var i = 0; i < inputs; i++) {
-            net.nodeWrite(new node(nodeType.SENSOR, nodePlace.INPUT), i);
+    organism.prototype.compatibility = function (other) {
+        var i = 0;
+        var j = 0;
+        var dis = 0;
+        var exc = 0;
+        var mat = 0;
+        var wdif = 0;
+        var excuntilnow = true;
+        for (;;) {
+            if (i >= this.genome.length - 1 || j >= other.genome.length - 1)
+                break;
+            if (this.genome[i].innovation == other.genome[j].innovation) {
+                excuntilnow = false;
+                i++;
+                j++;
+                mat++;
+                wdif += Math.abs(this.genome[i].weight - other.genome[j].weight);
+            }
+            else if (this.genome[i].innovation < other.genome[j].innovation) {
+                i++;
+                if (excuntilnow) {
+                    exc++;
+                }
+                else {
+                    dis++;
+                }
+            }
+            else if (this.genome[i].innovation > other.genome[j].innovation) {
+                j++;
+                if (excuntilnow) {
+                    exc++;
+                }
+                else {
+                    dis++;
+                }
+            }
         }
-        for (var i = 0; i < seq.length; i++) {
-            if (seq[i].enabled) {
-                var s = net.nodeRead(seq[i].start);
-                var e = net.nodeRead(seq[i].end);
-                var w = seq[i].weight;
+        exc += (i >= this.genome.length) ? other.genome.length - j + 1 : this.genome.length - i + 1;
+        var maxlen = (this.genome.length > other.genome.length) ? this.genome.length : other.genome.length;
+        var N = (maxlen > cSmallGenome) ? maxlen : 1;
+        return cDisjoint * dis / N + cExcess * exc / N + cMatching;
+    };
+    organism.prototype.randomNode = function (notInput) {
+        var exists = new Array();
+        var count = 0;
+        if (!notInput) {
+            for (var i = 0; i < nInputs; i++) {
+                exists[i] = true;
+                count++;
+            }
+        }
+        for (var o = 1; o < nOutputs; o++) {
+            exists[nMaxHidden + o] = true;
+            count++;
+        }
+        for (var _i = 0, _a = this.genome; _i < _a.length; _i++) {
+            var val = _a[_i];
+            if (!(val.start <= nInputs && notInput)) {
+                if (!exists[val.start])
+                    count++;
+                exists[val.start] = true;
+            }
+            if (!(val.end <= nInputs && notInput)) {
+                if (!exists[val.end])
+                    count++;
+                exists[val.end] = true;
+            }
+        }
+        var index = randInt(0, count);
+        for (var val in exists) {
+            index--;
+            if (index == 0) {
+                return parseInt(val);
+            }
+        }
+    };
+    organism.prototype.addLink = function (s, t, weight) {
+        var gen = new gene(s, t, weight, true);
+        this.genome.push(gen);
+    };
+    organism.prototype.addNode = function (index) {
+        this.genome[index].enabled = false;
+        var newNode = this.randomNode(true);
+        this.addLink(this.genome[index].start, newNode, this.genome[index].weight);
+        this.addLink(newNode, this.genome[index].end, newWeight);
+    };
+    organism.prototype.perturbLinks = function () {
+        for (var _i = 0, _a = this.genome; _i < _a.length; _i++) {
+            var val = _a[_i];
+            val.perturb();
+        }
+    };
+    organism.prototype.mutate = function () {
+        this.perturbLinks();
+    };
+    organism.prototype.generate = function () {
+        this.phenome = new network;
+        for (var i = 0; i < this.genome.length; i++) {
+            if (this.genome[i].enabled) {
+                var s = this.phenome.nodes[this.genome[i].start];
+                var e = this.phenome.nodes[this.genome[i].end];
+                var w = this.genome[i].weight;
                 if (s === undefined) {
                     s = new node(nodeType.NEURON, nodePlace.HIDDEN);
                 }
@@ -184,8 +267,8 @@ var organism = (function () {
                 }
                 var lnk = new link(s, e, w);
                 e.nodesIn.push(lnk);
-                s = net.nodeWrite(s, seq[i].start);
-                e = net.nodeWrite(e, seq[i].end);
+                this.phenome.nodes[this.genome[i].start] = s;
+                this.phenome.nodes[this.genome[i].end] = e;
             }
         }
     };
@@ -196,23 +279,33 @@ var organism = (function () {
 var species = (function () {
     function species() {
     }
+    species.prototype.cull = function () {
+        function compare(a, b) {
+            return a.fitness - b.fitness;
+        }
+        this.members.sort(compare);
+        var len = this.members.length;
+        while (this.members.length > cCull * len) {
+            this.members.pop();
+        }
+    };
+    species.prototype.breed = function () {
+        var child;
+        if (Math.random() < cCrossover) {
+            var p1 = this.members[randInt(0, this.members.length - 1)];
+            var p2 = this.members[randInt(0, this.members.length - 1)];
+            child = p1.crossover(p2);
+        }
+        else {
+            child = this.members[randInt(0, this.members.length - 1)];
+        }
+        child.mutate();
+        return child;
+    };
     return species;
 }());
 var generation = (function () {
     function generation() {
-        this.innovationCount = 0;
     }
-    generation.prototype.innovationCheck = function (gene) {
-        var start = gene.start;
-        var end = gene.end;
-        if (this.innovations[start][end] === null || this.innovations[start][end] === undefined) {
-            this.innovationCount++;
-            this.innovations[start][end] = this.innovationCount;
-            return this.innovationCount;
-        }
-        else {
-            return this.innovations[start][end];
-        }
-    };
     return generation;
 }());

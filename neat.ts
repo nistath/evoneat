@@ -1,7 +1,43 @@
-let cExcess=10;
-let cDisjoint=10;
-let cMatching=10;
+let nInputs=5;
+let nMaxHidden=40;
+let nOutputs=4;
+
+let cExcess=1.0;
+let cDisjoint=1.0;
+let cMatching=0.4;
+let cSmallGenome=20;
+let cCull=0.2;
+let cCrossover=0.75;
 let deltaThreshold=10;
+let pDisable=0.75;
+let pPerturb=0.8;
+let pPerturbUniform=0.9; //If a weight is to be perturbed, it will either be uniformly perturbed or set to a new value.
+let pLink=0.2;
+let pNode=0.1;
+
+let inputs=5;
+
+function newWeight(){
+    return Math.random()*4-2;
+}
+
+let innovations=new Array<Array<number>>();
+let innovationCount: number=0;
+
+function innovationCheck(gene: gene): number{
+    let start=gene.start;
+    let end=gene.end;
+
+    if(this.innovations[start][end]===null || this.innovations[start][end]===undefined){
+        this.innovationCount++;
+        this.innovations[start][end]=this.innovationCount;
+    }
+    return this.innovations[start][end];
+}
+
+function randInt(min: number, max: number){
+    return Math.floor(Math.random() * (max - min +1)) + min;
+}
 
 function swap(a: any, b: any): void{
     let temp: any=a;
@@ -28,6 +64,10 @@ function binarySearch(l: number, r: number, key:number, query: (n:number)=> numb
     }
 }
 
+function insertionSort(){
+
+}
+
 enum nodePlace{
     INPUT=1,
     HIDDEN=2,
@@ -35,6 +75,7 @@ enum nodePlace{
 }
 
 enum nodeType{
+    BIAS=-1,
     NULL=0,
     SENSOR=1,
     NEURON=2
@@ -71,47 +112,18 @@ class link{
 }
 
 class network{
-    input: Array<node>;
-    hidden: Array<node>;
-    output: Array<node>;
+    nodes: Array<node>;
 
-    constructor(inputs: number, maxhidden: number, outputs: number){
-        this.input=Array<node>(inputs);
-        this.hidden=Array<node>(maxhidden);
-        this.output=Array<node>(outputs);
-    }
+    constructor(){
+        this.nodes=Array<node>();
+        this.nodes[0]=new node(nodeType.BIAS,nodePlace.INPUT);
 
-    nodeRead(id: number): node{
-        let inlen=this.input.length;
-        let hidlen=this.hidden.length;
+        for(let i=1; i<nInputs; i++){
+            this.nodes[i]=new node(nodeType.SENSOR,nodePlace.INPUT);
+        }
 
-        if(id<inlen){
-            return this.input[id];
-        }
-        else if(id<inlen+hidlen){
-            return this.hidden[id-inlen];
-        }
-        else{
-            return this.output[id-(inlen+hidlen)];
-        }
-    }
-
-    nodeWrite(node: node, id: number): node{
-        let inlen=this.input.length;
-        let hidlen=this.hidden.length;
-        node.id=id;
-
-        if(id<inlen){
-            this.input[id]=node;
-            return node;
-        }
-        else if(id<inlen+hidlen){
-            this.hidden[id-inlen]=node;
-            return node;
-        }
-        else{
-            this.output[id-(inlen+hidlen)]=node;
-            return node;
+        for(let o=1; o<nOutputs; o++){
+            this.nodes[nMaxHidden+o]=new node(nodeType.NEURON,nodePlace.OUTPUT);
         }
     }
 }
@@ -123,18 +135,28 @@ class gene{
     weight: number;
     enabled: boolean;
 
-    constructor(i: number, st: number, en: number, we: number, n: boolean){
-        this.innovation=i;
-        this.start=st;
-        this.end=en;
-        this.weight=we;
-        this.enabled=n;
+    constructor(s: number, t: number, w: number, e: boolean){
+        this.start=s;
+        this.end=t;
+        this.weight=w;
+        this.enabled=e;
+        this.innovation=innovationCheck(this);
+    }
+
+    perturb(){
+        if(Math.random()<pPerturb){
+            if(Math.random()<pPerturbUniform){
+                this.weight*=Math.random();
+            }
+            else{
+                this.weight=newWeight();
+            }
+        }
     }
 }
 
 class organism{
     genome: Array<gene>=[];
-    maxNeuron: number=0;
     fitness: number=0;
     adjFitness: number=0;
     phenome: network;
@@ -155,10 +177,30 @@ class organism{
         }
 
         let child=new organism();
+
+        let match=new Array<gene>();
+        for(let val of p2.genome){
+            match[val.innovation]=val;
+        }
+
+        for(let val of p1.genome){
+            let push: gene=val;
+            if(match[val.innovation]!=undefined){
+                if(Math.random()<0.5){
+                    push=match[val.innovation];
+                }
+
+                push.enabled=!((!val.enabled || !match[val.innovation].enabled)&&Math.random()<pDisable);
+            }
+
+            child.genome.push(push);
+        }
+
+        /* Alternate crossover method. Requires sorted genomes.
         let i=0;
         let j=0;
 
-        function pair(i: number, j: number){
+        for(;;){
             let l=false;
             let k=false;
             if(i>=p1.genome.length){
@@ -169,16 +211,11 @@ class organism{
                 j=p2.genome.length-1;
                 k=true;
             }
+            let q={a: p1.genome[i], b: p2.genome[j], goa: l, gob: k};
 
-            return {a: p1.genome[i], b: p2.genome[j], goa: l, gob: k};
-        }
-
-        while(true){
-            let q=pair(i,j);
-            console.log(q);
             if(q.goa && q.gob) break;
             if(q.a.innovation==q.b.innovation){
-                if(!q.b.enabled){
+                if(!q.b.enabled && Math.random()<pDisable){//If the b gene is disabled and at a pDisable chance.
                     child.genome.push(q.b);
                 }
                 else{
@@ -196,65 +233,188 @@ class organism{
                 j++;
             }
         }
+        */
 
         return child;
     }
 
-    generate(inputs: number, maxhidden: number, outputs: number){
-        this.phenome=new network(inputs, maxhidden, outputs);
-        let net=this.phenome;
-        let seq=this.genome;
+    compatibility(other: organism){
+        let i=0;
+        let j=0;
+        let dis=0;
+        let exc=0;
+        let mat=0;
+        let wdif=0;
 
-        for(let i=0; i<inputs; i++){
-            net.nodeWrite(new node(nodeType.SENSOR, nodePlace.INPUT), i);
+        let excuntilnow=true;
+        for(;;){
+            if(i>=this.genome.length-1 || j>=other.genome.length-1) break;
+            if(this.genome[i].innovation==other.genome[j].innovation){
+                excuntilnow=false;
+                i++;
+                j++;
+                mat++;
+                wdif+=Math.abs(this.genome[i].weight-other.genome[j].weight);
+            }
+            else if(this.genome[i].innovation<other.genome[j].innovation){
+                i++;
+                if(excuntilnow){
+                    exc++;
+                }
+                else{
+                    dis++;
+                }
+            }
+            else if(this.genome[i].innovation>other.genome[j].innovation){
+                j++;
+                if(excuntilnow){
+                    exc++;
+                }
+                else{
+                    dis++;
+                }
+            }
+        }
+        exc+=(i>=this.genome.length)? other.genome.length-j+1 : this.genome.length-i+1;
+
+        let maxlen=(this.genome.length>other.genome.length)? this.genome.length : other.genome.length;
+        let N=(maxlen>cSmallGenome)? maxlen : 1;
+        return cDisjoint*dis/N+cExcess*exc/N+cMatching;
+    }
+
+    /* Insertion sort addLink for the alternate crossover method.
+    private addLink(s: number, t: number){
+        let gen=new gene(s, t, newWeight(), true);
+        let i=this.genome.length-1;
+        while(i>0 && this.genome[i]<this.genome[i-1]){
+            swap(this.genome[i],this.genome[i-1]); //Check if swap actually changes anything in the array
+            i--;
+        }
+    }
+    */
+
+    private randomNode(notInput: boolean): number{
+        let exists=new Array<boolean>();
+        let count=0;
+
+        if(!notInput){
+            for(let i=0; i<nInputs; i++){
+                exists[i]=true;
+                count++;
+            }
         }
 
-        for(let i=0; i<seq.length; i++){
-            if(seq[i].enabled){
-                let s=net.nodeRead(seq[i].start);
-                let e=net.nodeRead(seq[i].end);
-                let w=seq[i].weight;
+        for(let o=1; o<nOutputs; o++){
+            exists[nMaxHidden+o]=true;
+            count++;
+        }
+
+        for(let val of this.genome){
+            if(!(val.start<=nInputs && notInput)){
+                if(!exists[val.start]) count++;
+                exists[val.start]=true;
+            }
+
+            if(!(val.end<=nInputs && notInput)){
+                if(!exists[val.end]) count++;
+                exists[val.end]=true;
+            }
+        }
+
+        let index=randInt(0,count);
+        for(let val in exists){
+            index--;
+            if(index==0){
+                return parseInt(val);
+            }
+        }
+    }
+
+    private addLink(s: number, t: number, weight){
+        let gen=new gene(s, t, weight, true);
+        this.genome.push(gen);
+    }
+
+    private addNode(index: number){
+        this.genome[index].enabled=false;
+        let newNode=this.randomNode(true);
+        this.addLink(this.genome[index].start,newNode,this.genome[index].weight);
+        this.addLink(newNode,this.genome[index].end,newWeight);
+    }
+
+    private perturbLinks(){
+        for(let val of this.genome){
+            val.perturb();
+        }
+    }
+
+    mutate(){//TODO
+        this.perturbLinks();
+    }
+
+    generate(){
+        this.phenome=new network;
+
+        for(let i=0; i<this.genome.length; i++){
+            if(this.genome[i].enabled){
+                let s=this.phenome.nodes[this.genome[i].start];
+                let e=this.phenome.nodes[this.genome[i].end];
+                let w=this.genome[i].weight;
 
                 if(s===undefined){
                     s=new node(nodeType.NEURON, nodePlace.HIDDEN);
                 }
                 if(e===undefined){
-                    e=new node(nodeType.NEURON, nodePlace.HIDDEN);//but it could be out?
+                    e=new node(nodeType.NEURON, nodePlace.HIDDEN);
                 }
 
                 let lnk=new link(s, e, w);
                 e.nodesIn.push(lnk);
 
-                s=net.nodeWrite(s, seq[i].start);
-                e=net.nodeWrite(e, seq[i].end);
+                this.phenome.nodes[this.genome[i].start]=s;
+                this.phenome.nodes[this.genome[i].end]=e;
             }
         }
     }
 
-    evaluate(){
+    evaluate(){//TODO
 
     }
 }
 
 class species{
+    representation: organism;
     members: Array<organism>;
+    sumFitness: number;
+
+    cull(){
+        function compare(a,b){
+            return a.fitness-b.fitness;
+        }
+        this.members.sort(compare);
+        let len=this.members.length;
+        while(this.members.length>cCull*len){
+            this.members.pop();
+        }
+    }
+
+    breed(){
+        let child: organism;
+        if(Math.random()<cCrossover){
+            let p1=this.members[randInt(0,this.members.length-1)];
+            let p2=this.members[randInt(0,this.members.length-1)];
+
+            child=p1.crossover(p2);
+        }
+        else{
+            child=this.members[randInt(0,this.members.length-1)];
+        }
+
+        child.mutate();
+        return child;
+    }
 }
 
 class generation{
-    innovations: Array<Array<number>>;
-    innovationCount: number=0;
 
-    innovationCheck(gene: gene): number{
-        let start=gene.start;
-        let end=gene.end;
-
-        if(this.innovations[start][end]===null || this.innovations[start][end]===undefined){
-            this.innovationCount++;
-            this.innovations[start][end]=this.innovationCount;
-            return this.innovationCount;
-        }
-        else{
-            return this.innovations[start][end];
-        }
-    }
 }
