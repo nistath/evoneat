@@ -14,6 +14,7 @@ let pPerturb=0.8;
 let pPerturbUniform=0.9; //If a weight is to be perturbed, it will either be uniformly perturbed or set to a new value.
 let pLink=0.2;
 let pNode=0.1;
+let pKeepNotFit=0.5; //Keep the matching gene from the leasdt fit organism during crossover.
 
 let inputs=5;
 
@@ -157,6 +158,8 @@ class gene{
 
 class organism{
     genome: Array<gene>=[];
+    innovationMin: number;
+    innovationMax: number;
     fitness: number=0;
     adjFitness: number=0;
     phenome: network;
@@ -177,6 +180,8 @@ class organism{
         }
 
         let child=new organism();
+        child.innovationMin=Math.min(p1.innovationMin, p2.innovationMin);
+        child.innovationMax=Math.max(p1.innovationMax, p2.innovationMax);
 
         let match=new Array<gene>();
         for(let val of p2.genome){
@@ -186,17 +191,23 @@ class organism{
         for(let val of p1.genome){
             let push: gene=val;
             if(match[val.innovation]!=undefined){
-                if(Math.random()<0.5){
+                if(Math.random()<pKeepNotFit){
                     push=match[val.innovation];
                 }
 
                 push.enabled=!((!val.enabled || !match[val.innovation].enabled)&&Math.random()<pDisable);
             }
 
+            child.innovationMin=Math.min(child.innovationMin,push.innovation);
+            child.innovationMax=Math.max(child.innovationMin,push.innovation);
             child.genome.push(push);
         }
 
-        /* Alternate crossover method. Requires sorted genomes.
+        return child;
+    }
+
+    /* Alternate crossover method. Requires sorted by innovation genomes.
+    crossover(other: organism): organism{
         let i=0;
         let j=0;
 
@@ -233,18 +244,61 @@ class organism{
                 j++;
             }
         }
-        */
 
         return child;
     }
+    */
 
-    /*compatibility(other: organism){ Compatibility function for alternate method.
+    compatibility(other: organism): number{
+        let dis=0;
+        let exc=0;
+        let mat=0;
+        let wDif=0;
+
+        let exists=new Array<number>();
+        let matching=new Array<boolean>();
+
+        for(let val of other.genome){
+            exists[val.innovation]=val.weight;
+        }
+
+        for(let val of this.genome){
+            if(val.innovation<other.innovationMin || val.innovation>other.innovationMax){
+                exc++;
+            }
+            else{
+                if(exists[val.innovation]==undefined){
+                    dis++;
+                }
+                else{
+                    wDif+=Math.abs(val.weight-exists[val.innovation]);
+                    mat++;
+                    matching[val.innovation]=true;
+                }
+            }
+        }
+        for(let val of other.genome){
+            if(val.innovation<this.innovationMin || val.innovation>this.innovationMax){
+                exc++;
+            }
+            else if(matching[val.innovation]!=true){
+                dis++;
+            }
+        }
+
+        let maxlen=Math.max(this.genome.length, other.genome.length);
+        let N=(maxlen>cSmallGenome)? maxlen : 1;
+        return (cDisjoint*dis/N)+(cExcess*exc/N)+(cMatching*wDif/mat);
+    }
+
+    /*Compatibility function for alternate method.
+    compatibility(other: organism){
         let i=0;
         let j=0;
         let dis=0;
         let exc=0;
         let mat=0;
-        let wdif=0;
+        let wDif=0;
 
         let excuntilnow=true;
         for(;;){
@@ -254,7 +308,7 @@ class organism{
                 i++;
                 j++;
                 mat++;
-                wdif+=Math.abs(this.genome[i].weight-other.genome[j].weight);
+                wDif+=Math.abs(this.genome[i].weight-other.genome[j].weight);
             }
             else if(this.genome[i].innovation<other.genome[j].innovation){
                 i++;
@@ -277,11 +331,16 @@ class organism{
         }
         exc+=(i>=this.genome.length)? other.genome.length-j+1 : this.genome.length-i+1;
 
-        let maxlen=(this.genome.length>other.genome.length)? this.genome.length : other.genome.length;
+        let maxlen=Math.max(this.genome.length, other.genome.length);
         let N=(maxlen>cSmallGenome)? maxlen : 1;
-        return cDisjoint*dis/N+cExcess*exc/N+cMatching;
+        return (cDisjoint*dis/N)+(cExcess*exc/N)+(cMatching*wDif/mat);
     }
     */
+
+    private addLink(s: number, t: number, weight){
+        let gen=new gene(s, t, weight, true);
+        this.genome.push(gen);
+    }
 
     /* Insertion sort addLink for the alternate crossover method.
     private addLink(s: number, t: number){
@@ -329,11 +388,6 @@ class organism{
                 return parseInt(val);
             }
         }
-    }
-
-    private addLink(s: number, t: number, weight){
-        let gen=new gene(s, t, weight, true);
-        this.genome.push(gen);
     }
 
     private addNode(index: number){

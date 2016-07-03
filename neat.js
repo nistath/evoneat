@@ -13,6 +13,7 @@ var pPerturb = 0.8;
 var pPerturbUniform = 0.9;
 var pLink = 0.2;
 var pNode = 0.1;
+var pKeepNotFit = 0.5;
 var inputs = 5;
 function newWeight() {
     return Math.random() * 4 - 2;
@@ -139,6 +140,8 @@ var organism = (function () {
             swap(p1, p2);
         }
         var child = new organism();
+        child.innovationMin = Math.min(p1.innovationMin, p2.innovationMin);
+        child.innovationMax = Math.max(p1.innovationMax, p2.innovationMax);
         var match = new Array();
         for (var _i = 0, _a = p2.genome; _i < _a.length; _i++) {
             var val = _a[_i];
@@ -148,14 +151,60 @@ var organism = (function () {
             var val = _c[_b];
             var push = val;
             if (match[val.innovation] != undefined) {
-                if (Math.random() < 0.5) {
+                if (Math.random() < pKeepNotFit) {
                     push = match[val.innovation];
                 }
                 push.enabled = !((!val.enabled || !match[val.innovation].enabled) && Math.random() < pDisable);
             }
+            child.innovationMin = Math.min(child.innovationMin, push.innovation);
+            child.innovationMax = Math.max(child.innovationMin, push.innovation);
             child.genome.push(push);
         }
         return child;
+    };
+    organism.prototype.compatibility = function (other) {
+        var dis = 0;
+        var exc = 0;
+        var mat = 0;
+        var wDif = 0;
+        var exists = new Array();
+        var matching = new Array();
+        for (var _i = 0, _a = other.genome; _i < _a.length; _i++) {
+            var val = _a[_i];
+            exists[val.innovation] = val.weight;
+        }
+        for (var _b = 0, _c = this.genome; _b < _c.length; _b++) {
+            var val = _c[_b];
+            if (val.innovation < other.innovationMin || val.innovation > other.innovationMax) {
+                exc++;
+            }
+            else {
+                if (exists[val.innovation] == undefined) {
+                    dis++;
+                }
+                else {
+                    wDif += Math.abs(val.weight - exists[val.innovation]);
+                    mat++;
+                    matching[val.innovation] = true;
+                }
+            }
+        }
+        for (var _d = 0, _e = other.genome; _d < _e.length; _d++) {
+            var val = _e[_d];
+            if (val.innovation < this.innovationMin || val.innovation > this.innovationMax) {
+                exc++;
+            }
+            else if (matching[val.innovation] != true) {
+                dis++;
+            }
+        }
+        var maxlen = Math.max(this.genome.length, other.genome.length);
+        var N = (maxlen > cSmallGenome) ? maxlen : 1;
+        return (cDisjoint * dis / N) + (cExcess * exc / N) + (cMatching * wDif / mat);
+    };
+    organism.prototype.addLink = function (s, t, weight) {
+        var gen = new gene(s, t, weight, true);
+        this.genome.push(gen);
     };
     organism.prototype.randomNode = function (notInput) {
         var exists = new Array();
@@ -190,10 +239,6 @@ var organism = (function () {
                 return parseInt(val);
             }
         }
-    };
-    organism.prototype.addLink = function (s, t, weight) {
-        var gen = new gene(s, t, weight, true);
-        this.genome.push(gen);
     };
     organism.prototype.addNode = function (index) {
         this.genome[index].enabled = false;
