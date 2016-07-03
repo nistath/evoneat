@@ -238,7 +238,7 @@ class organism{
         return child;
     }
 
-    compatibility(other: organism){
+    /*compatibility(other: organism){ Compatibility function for alternate method.
         let i=0;
         let j=0;
         let dis=0;
@@ -281,6 +281,7 @@ class organism{
         let N=(maxlen>cSmallGenome)? maxlen : 1;
         return cDisjoint*dis/N+cExcess*exc/N+cMatching;
     }
+    */
 
     /* Insertion sort addLink for the alternate crossover method.
     private addLink(s: number, t: number){

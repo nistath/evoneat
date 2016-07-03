@@ -157,48 +157,6 @@ var organism = (function () {
         }
         return child;
     };
-    organism.prototype.compatibility = function (other) {
-        var i = 0;
-        var j = 0;
-        var dis = 0;
-        var exc = 0;
-        var mat = 0;
-        var wdif = 0;
-        var excuntilnow = true;
-        for (;;) {
-            if (i >= this.genome.length - 1 || j >= other.genome.length - 1)
-                break;
-            if (this.genome[i].innovation == other.genome[j].innovation) {
-                excuntilnow = false;
-                i++;
-                j++;
-                mat++;
-                wdif += Math.abs(this.genome[i].weight - other.genome[j].weight);
-            }
-            else if (this.genome[i].innovation < other.genome[j].innovation) {
-                i++;
-                if (excuntilnow) {
-                    exc++;
-                }
-                else {
-                    dis++;
-                }
-            }
-            else if (this.genome[i].innovation > other.genome[j].innovation) {
-                j++;
-                if (excuntilnow) {
-                    exc++;
-                }
-                else {
-                    dis++;
-                }
-            }
-        }
-        exc += (i >= this.genome.length) ? other.genome.length - j + 1 : this.genome.length - i + 1;
-        var maxlen = (this.genome.length > other.genome.length) ? this.genome.length : other.genome.length;
-        var N = (maxlen > cSmallGenome) ? maxlen : 1;
-        return cDisjoint * dis / N + cExcess * exc / N + cMatching;
-    };
     organism.prototype.randomNode = function (notInput) {
         var exists = new Array();
         var count = 0;
