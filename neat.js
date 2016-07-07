@@ -1,6 +1,6 @@
-var nInputs = 5;
-var nMaxHidden = 40;
-var nOutputs = 4;
+var nInputs = 1;
+var nMaxHidden = 4;
+var nOutputs = 2;
 var cExcess = 1.0;
 var cDisjoint = 1.0;
 var cMatching = 0.4;
@@ -22,19 +22,19 @@ var innovations = new Array();
 var innovationCount = 0;
 function innovationCheck(Gene) {
     var start = Gene.start;
-    var end = Gene.end;
+    var target = Gene.target;
     function newInnovation() {
         innovationCount++;
-        innovations[start][end] = innovationCount;
+        innovations[start][target] = innovationCount;
     }
     if (innovations[start] === null || innovations[start] === undefined) {
         innovations[start] = new Array();
         newInnovation();
     }
-    else if (innovations[start][end] === null || innovations[start][end] === undefined) {
+    else if (innovations[start][target] === null || innovations[start][target] === undefined) {
         newInnovation();
     }
-    return innovations[start][end];
+    return innovations[start][target];
 }
 function randInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -74,19 +74,20 @@ var Neuron = (function () {
     function Neuron(what, where) {
         this.value = 0;
         this.frame = 0;
-        this.neuronsIn = [];
+        this.linksIn = [];
         this.type = what;
         this.place = where;
     }
     Neuron.prototype.activation = function () {
         this.value = 2 / (1 + Math.exp(-4.9 * this.value)) - 1;
+        return this.value;
     };
     return Neuron;
 }());
 var Link = (function () {
-    function Link(i, o, w) {
-        this.in = i;
-        this.out = o;
+    function Link(s, t, w) {
+        this.start = s;
+        this.target = t;
         this.weight = w;
     }
     return Link;
@@ -96,39 +97,51 @@ var Network = (function () {
         this.frame = 0;
         this.neurons = Array();
         this.neurons[0] = new Neuron(neuronType.BIAS, neuronPlace.INPUT);
-        for (var i = 1; i < nInputs; i++) {
+        this.neurons[0].value = 1;
+        for (var i = 1; i <= nInputs; i++) {
             this.neurons[i] = new Neuron(neuronType.SENSOR, neuronPlace.INPUT);
         }
-        for (var o = 1; o < nOutputs; o++) {
-            this.neurons[nMaxHidden + o] = new Neuron(neuronType.NEURON, neuronPlace.OUTPUT);
+        for (var o = 1; o <= nOutputs; o++) {
+            this.neurons[nMaxHidden + nInputs + o] = new Neuron(neuronType.NEURON, neuronPlace.OUTPUT);
         }
     }
-    Network.prototype.run = function () {
-        var outputs = new Array();
-        this.frame++;
-        function propagate(index) {
+    Network.prototype.propagate = function (index) {
+        if (this.neurons[index].place == neuronPlace.INPUT || this.neurons[index].frame == this.frame) {
+            return this.neurons[index].value;
+        }
+        else {
             var sum = 0;
-            for (var i = 0; i < this.neurons[index].neuronsIn.length; i++) {
-                if (this.neurons[index].frame != this.frame) {
-                    sum += propagate(this.neurons[index].neuronsIn[i]);
-                }
-                else {
-                    sum += this.neurons[index].neuronsIn[i].value;
-                }
+            this.neurons[index].frame = this.frame;
+            for (var _i = 0, _a = this.neurons[index].linksIn; _i < _a.length; _i++) {
+                var val = _a[_i];
+                sum += val.weight * this.propagate(val.start);
             }
+            this.neurons[index].value = sum;
             return this.neurons[index].activation();
         }
-        for (var o = 1; o < nOutputs; o++) {
-            var current = nMaxHidden + o;
-            propagate(current);
+    };
+    Network.prototype.run = function (inputs) {
+        this.frame++;
+        if (inputs.length != nInputs) {
+            console.log("Invalid number of inputs given during network execution.");
+            return;
         }
+        for (var i = 1; i <= nInputs; i++) {
+            this.neurons[i].value = inputs[i - 1];
+        }
+        var outputs = new Array();
+        for (var o = 1; o <= nOutputs; o++) {
+            var current = nInputs + nMaxHidden + o;
+            outputs.push(this.propagate(current));
+        }
+        return outputs;
     };
     return Network;
 }());
 var Gene = (function () {
     function Gene(s, t, w, e) {
         this.start = s;
-        this.end = t;
+        this.target = t;
         this.weight = w;
         this.enabled = e;
         this.innovation = innovationCheck(this);
@@ -256,10 +269,10 @@ var Organism = (function () {
                     count++;
                 exists[val.start] = true;
             }
-            if (!(val.end <= nInputs && notInput)) {
-                if (!exists[val.end])
+            if (!(val.target <= nInputs && notInput)) {
+                if (!exists[val.target])
                     count++;
-                exists[val.end] = true;
+                exists[val.target] = true;
             }
         }
         var index = randInt(0, count);
@@ -274,7 +287,7 @@ var Organism = (function () {
         this.genome[index].enabled = false;
         var newneuron = this.randomNeuron(true);
         this.addLink(this.genome[index].start, newneuron, this.genome[index].weight);
-        this.addLink(newneuron, this.genome[index].end, 1);
+        this.addLink(newneuron, this.genome[index].target, 1);
     };
     Organism.prototype.perturbLinks = function () {
         for (var _i = 0, _a = this.genome; _i < _a.length; _i++) {
@@ -291,17 +304,17 @@ var Organism = (function () {
             var val = _a[_i];
             if (val.enabled) {
                 var s = this.phenome.neurons[val.start];
-                var e = this.phenome.neurons[val.end];
+                var t = this.phenome.neurons[val.target];
                 var w = val.weight;
                 if (s === undefined) {
                     s = new Neuron(neuronType.NEURON, neuronPlace.HIDDEN);
                 }
-                if (e === undefined) {
-                    e = new Neuron(neuronType.NEURON, neuronPlace.HIDDEN);
+                if (t === undefined) {
+                    t = new Neuron(neuronType.NEURON, neuronPlace.HIDDEN);
                 }
-                e.neuronsIn.push(new Link(s, e, w));
+                t.linksIn.push(new Link(val.start, val.target, w));
                 this.phenome.neurons[val.start] = s;
-                this.phenome.neurons[val.end] = e;
+                this.phenome.neurons[val.target] = t;
             }
         }
     };
@@ -342,3 +355,28 @@ var Generation = (function () {
     }
     return Generation;
 }());
+var a = new Organism;
+var k = new Gene(1, 3, 0.5, true);
+a.genome.push(k);
+var k = new Gene(3, 4, 0.5, true);
+a.genome.push(k);
+var k = new Gene(4, 2, 0.5, true);
+a.genome.push(k);
+var k = new Gene(2, 3, 0.5, true);
+a.genome.push(k);
+var k = new Gene(4, 6, 0.5, true);
+a.genome.push(k);
+a.generate();
+console.log(a.phenome.run([2]));
+for (var val in a.phenome.neurons) {
+    console.log(val);
+    console.log(a.phenome.neurons[val]);
+}
+console.log(a.phenome.run([2]));
+for (var val in a.phenome.neurons) {
+    console.log(val);
+    console.log(a.phenome.neurons[val]);
+}
+console.log(a.phenome.run([2]));
+console.log(a.phenome.run([2]));
+console.log(a.phenome.run([2]));

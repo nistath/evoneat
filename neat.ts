@@ -1,6 +1,6 @@
-let nInputs=5;
-let nMaxHidden=40;
-let nOutputs=4;
+let nInputs=1;
+let nMaxHidden=4;
+let nOutputs=2;
 
 let cExcess=1.0;
 let cDisjoint=1.0;
@@ -14,7 +14,7 @@ let pPerturb=0.8;
 let pPerturbUniform=0.9; //If a weight is to be perturbed, it will either be uniformly perturbed or set to a new value.
 let pLink=0.2;
 let pneuron=0.1;
-let pKeepNotFit=0.5; //Keep the matching Gene from the leasdt fit Organism during crossover.
+let pKeepNotFit=0.5; //Keep the matching Gene from the least fit Organism during crossover.
 
 let inputs=5;
 
@@ -27,21 +27,21 @@ let innovationCount: number=0;
 
 function innovationCheck(Gene: Gene): number{
     let start=Gene.start;
-    let end=Gene.end;
+    let target=Gene.target;
 
     function newInnovation(){
         innovationCount++;
-        innovations[start][end]=innovationCount;
+        innovations[start][target]=innovationCount;
     }
 
     if(innovations[start]===null || innovations[start]===undefined){
         innovations[start]=new Array<number>();
         newInnovation();
     }
-    else if(innovations[start][end]===null || innovations[start][end]===undefined){
+    else if(innovations[start][target]===null || innovations[start][target]===undefined){
         newInnovation();
     }
-    return innovations[start][end];
+    return innovations[start][target];
 }
 
 function randInt(min: number, max: number){
@@ -90,7 +90,7 @@ class Neuron{
     place: neuronPlace;
     value: number=0;
     frame: number=0;
-    neuronsIn: Array<Link>=[];
+    linksIn: Array<Link>=[];
 
     constructor(what: neuronType, where: neuronPlace){
         this.type=what;
@@ -99,17 +99,18 @@ class Neuron{
 
     activation(){
         this.value=2/(1+Math.exp(-4.9*this.value))-1;
+        return this.value;
     }
 }
 
 class Link{
-    in: Neuron;
-    out: Neuron;
+    start: number;
+    target: number;
     weight: number;
 
-    constructor(i, o, w){
-        this.in=i;
-        this.out=o;
+    constructor(s, t, w){
+        this.start=s;
+        this.target=t;
         this.weight=w;
     }
 }
@@ -121,53 +122,65 @@ class Network{
     constructor(){
         this.neurons=Array<Neuron>();
         this.neurons[0]=new Neuron(neuronType.BIAS,neuronPlace.INPUT);
+        this.neurons[0].value=1;
 
-        for(let i=1; i<nInputs; i++){
+        for(let i=1; i<=nInputs; i++){
             this.neurons[i]=new Neuron(neuronType.SENSOR,neuronPlace.INPUT);
         }
 
-        for(let o=1; o<nOutputs; o++){
-            this.neurons[nMaxHidden+o]=new Neuron(neuronType.NEURON,neuronPlace.OUTPUT);
+        for(let o=1; o<=nOutputs; o++){
+            this.neurons[nMaxHidden+nInputs+o]=new Neuron(neuronType.NEURON,neuronPlace.OUTPUT);
         }
     }
 
-
-
-    run(){
-        let outputs=new Array<number>();
-        this.frame++;
-
-        function propagate(index: number){
+    private propagate(index: number): number{ //Calculates and returns the value of a neuron.
+        if(this.neurons[index].place==neuronPlace.INPUT || this.neurons[index].frame==this.frame){
+            return this.neurons[index].value;
+        }
+        else{
             let sum=0;
-
-            for(let i=0; i<this.neurons[index].neuronsIn.length; i++){
-                if(this.neurons[index].frame!=this.frame){
-                    sum+=propagate(this.neurons[index].neuronsIn[i]);
-                }
-                else{
-                    sum+=this.neurons[index].neuronsIn[i].value;
-                }
+            this.neurons[index].frame=this.frame;
+            for(let val of this.neurons[index].linksIn){
+                sum+=val.weight*this.propagate(val.start);
             }
+            this.neurons[index].value=sum;
+
             return this.neurons[index].activation();
         }
+    }
 
-        for(let o=1; o<nOutputs; o++){
-            let current=nMaxHidden+o;
-            propagate(current);
+    run(inputs: Array<number>): Array<number>{
+        this.frame++;
+
+        if(inputs.length!=nInputs){
+            console.log("Invalid number of inputs given during network execution.");
+            return ;
         }
+
+        for(let i=1; i<=nInputs; i++){
+            this.neurons[i].value=inputs[i-1];
+        }
+
+        let outputs=new Array<number>();
+        for(let o=1; o<=nOutputs; o++){
+            let current=nInputs+nMaxHidden+o;
+            outputs.push(this.propagate(current));
+        }
+
+        return outputs;
     }
 }
 
 class Gene{
     innovation: number;
     start: number;
-    end: number;
+    target: number;
     weight: number;
     enabled: boolean;
 
     constructor(s: number, t: number, w: number, e: boolean){
         this.start=s;
-        this.end=t;
+        this.target=t;
         this.weight=w;
         this.enabled=e;
         this.innovation=innovationCheck(this);
@@ -406,9 +419,9 @@ class Organism{
                 exists[val.start]=true;
             }
 
-            if(!(val.end<=nInputs && notInput)){
-                if(!exists[val.end]) count++;
-                exists[val.end]=true;
+            if(!(val.target<=nInputs && notInput)){
+                if(!exists[val.target]) count++;
+                exists[val.target]=true;
             }
         }
 
@@ -425,7 +438,7 @@ class Organism{
         this.genome[index].enabled=false;
         let newneuron=this.randomNeuron(true);
         this.addLink(this.genome[index].start,newneuron,this.genome[index].weight);
-        this.addLink(newneuron,this.genome[index].end,1);
+        this.addLink(newneuron,this.genome[index].target,1);
     }
 
     private perturbLinks(){
@@ -444,20 +457,20 @@ class Organism{
         for(let val of this.genome){
             if(val.enabled){
                 let s=this.phenome.neurons[val.start];
-                let e=this.phenome.neurons[val.end];
+                let t=this.phenome.neurons[val.target];
                 let w=val.weight;
 
                 if(s===undefined){
                     s=new Neuron(neuronType.NEURON, neuronPlace.HIDDEN);
                 }
-                if(e===undefined){
-                    e=new Neuron(neuronType.NEURON, neuronPlace.HIDDEN);
+                if(t===undefined){
+                    t=new Neuron(neuronType.NEURON, neuronPlace.HIDDEN);
                 }
 
-                e.neuronsIn.push(new Link(s, e, w));
+                t.linksIn.push(new Link(val.start, val.target, w));
 
                 this.phenome.neurons[val.start]=s;
-                this.phenome.neurons[val.end]=e;
+                this.phenome.neurons[val.target]=t;
             }
         }
     }
@@ -502,3 +515,30 @@ class species{
 class Generation{
 
 }
+
+let a=new Organism;
+var k=new Gene(1,3,0.5,true);
+a.genome.push(k);
+var k=new Gene(3,4,0.5,true);
+a.genome.push(k);
+var k=new Gene(4,2,0.5,true);
+a.genome.push(k);
+var k=new Gene(2,3,0.5,true);
+a.genome.push(k);
+var k=new Gene(4,6,0.5,true);
+a.genome.push(k);
+
+a.generate();
+console.log(a.phenome.run([2]));
+for(let val in a.phenome.neurons){
+    console.log(val);
+    console.log(a.phenome.neurons[val]);
+}
+console.log(a.phenome.run([2]));
+for(let val in a.phenome.neurons){
+    console.log(val);
+    console.log(a.phenome.neurons[val]);
+}
+console.log(a.phenome.run([2]));
+console.log(a.phenome.run([2]));
+console.log(a.phenome.run([2]));
