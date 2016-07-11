@@ -1,0 +1,17 @@
+{
+    "hyperparameters": {
+        "cExcess": 1.0,
+        "cDisjoint": 1.0,
+        "cMatching": 0.4,
+        "deltaThreshold": 3,
+        "cSmallGenome": 20,
+        "cCull": 0.2,
+        "pCrossover": 0.75,
+        "pDisable": 0.75,
+        "pPerturb": 0.8,
+        "pPerturbUniform": 0.9,
+        "pLink": 0.05,
+        "pNeuron": 0.03,
+        "pKeepNotFit": 0.5
+    }
+}

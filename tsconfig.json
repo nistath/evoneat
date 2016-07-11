@@ -14,7 +14,8 @@
         "noLib": false,
         "preserveConstEnums": true,
         "suppressImplicitAnyIndexErrors": true,
-        "outDir": "../debug"
+        "sourceRoot": "./src",
+        "outFile": "./build"
     },
     "exclude": [
         "node_modules",
