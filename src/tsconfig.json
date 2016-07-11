@@ -14,7 +14,7 @@
         "noLib": false,
         "preserveConstEnums": true,
         "suppressImplicitAnyIndexErrors": true,
-        "outDir": "Compiled"
+        "outDir": "../debug"
     },
     "exclude": [
         "node_modules",

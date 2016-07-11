@@ -1,3 +1,5 @@
+import * as helper from "./Helpers.ts";
+
 enum neuronPlace{
     INPUT=1,
     HIDDEN=2,
@@ -11,7 +13,7 @@ enum neuronType{
     NEURON=2
 }
 
-class Neuron{
+export class Neuron{
     id: number;
     type: neuronType;
     place: neuronPlace;
@@ -30,7 +32,7 @@ class Neuron{
     }
 }
 
-class Link{
+export class Link{
     start: number;
     target: number;
     weight: number;
@@ -42,7 +44,7 @@ class Link{
     }
 }
 
-class Network{
+export class Network{
     neurons: Array<Neuron>;
     frame: number=0;
 
@@ -58,6 +60,23 @@ class Network{
         for(let o=1; o<=nOutputs; o++){
             this.neurons[nMaxHidden+nInputs+o]=new Neuron(neuronType.NEURON,neuronPlace.OUTPUT);
         }
+    }
+
+    pushLink(start, target, weight){
+        let s=this.neurons[start];
+        let t=this.neurons[target];
+
+        if(helper.undefined(s)){
+            s=new Neuron(neuronType.NEURON, neuronPlace.HIDDEN);
+        }
+        if(helper.undefined(t)){
+            t=new Neuron(neuronType.NEURON, neuronPlace.HIDDEN);
+        }
+
+        t.linksIn.push(new Link(start, target, weight));
+
+        this.neurons[start]=s;
+        this.neurons[target]=t;
     }
 
     private propagate(index: number): number{ //Calculates and returns the value of a neuron.

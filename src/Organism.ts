@@ -1,11 +1,15 @@
-class Organism{
+import * as helper from "./Helpers.ts";
+import Gene from "./Gene.ts";
+import * as neural from "./Network.ts";
+
+export default class Organism{
     genome: Array<Gene>=[];
     maxNeuron: number=0;
     innovationMin: number=Infinity;
     innovationMax: number=-Infinity;
     fitness: number;
-    adjFitness: number=0;
-    phenome: Network;
+    adjFitness: number;
+    phenome: neural.Network;
 
     sort(){
         function compare(a,b){
@@ -39,7 +43,7 @@ class Organism{
 
         for(let val of p1.genome){
             let push: Gene=val;
-            if(match[val.innovation]!==undefined){
+            if(!helper.undefined(match[val.innovation])){
                 if(Math.random()<pKeepNotFit){
                     push=match[val.innovation];
                 }
@@ -112,7 +116,7 @@ class Organism{
                 exc++;
             }
             else{
-                if(exists[val.innovation]===undefined){
+                if(helper.undefined(exists[val.innovation])){
                     dis++;
                 }
                 else{
@@ -226,7 +230,7 @@ class Organism{
             }
         }
 
-        let index=randInt(0, count);
+        let index=helper.randInt(0, count);
         for(let val in exists){
             index--;
             if(index==0){
@@ -260,37 +264,23 @@ class Organism{
         }
 
         if(Math.random()<pNeuron){
-            this.addNeuron(randInt(0,this.genome.length-1));
+            this.addNeuron(helper.randInt(0,this.genome.length-1));
         }
     }
 
     generate(){
-        this.phenome=new Network;
+        this.phenome=new neural.Network;
 
         for(let val of this.genome){
             if(val.enabled){
-                let s=this.phenome.neurons[val.start];
-                let t=this.phenome.neurons[val.target];
-                let w=val.weight;
-
-                if(s===undefined){
-                    s=new Neuron(neuronType.NEURON, neuronPlace.HIDDEN);
-                }
-                if(t===undefined){
-                    t=new Neuron(neuronType.NEURON, neuronPlace.HIDDEN);
-                }
-
-                t.linksIn.push(new Link(val.start, val.target, w));
-
-                this.phenome.neurons[val.start]=s;
-                this.phenome.neurons[val.target]=t;
+                this.phenome.pushLink(val.start,val.target,val.weight);
             }
         }
     }
 
     getFitness(){
-        if(this.fitness===undefined || this.fitness===null){
-            if(this.phenome===undefined || this.phenome===null){
+        if(helper.undefined(this.fitness)){
+            if(helper.undefined(this.phenome)){
                 this.generate();
             }
             this.evaluate();
@@ -311,6 +301,9 @@ class Organism{
 
         if(outputsConnected){
 
+        }
+        else{
+            this.fitness=0;
         }
 
         delete this.phenome;

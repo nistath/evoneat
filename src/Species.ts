@@ -1,4 +1,7 @@
-class Species{
+import * as helper from "./Helpers.ts";
+import Organism from "./Organism.ts";
+
+export default class Species{
     members: Array<Organism>;
     sumFitness: number;
 
@@ -16,8 +19,8 @@ class Species{
     breed(){
         let child: Organism;
         if(Math.random()<pCrossover){
-            let p1=this.members[randInt(0,this.members.length-1)];
-            let p2=this.members[randInt(0,this.members.length-1)];
+            let p1=this.members[helper.randInt(0,this.members.length-1)];
+            let p2=this.members[helper.randInt(0,this.members.length-1)];
             if(p1==p2){
                 child=p1;
             }
@@ -26,7 +29,7 @@ class Species{
             }
         }
         else{
-            child=this.members[randInt(0,this.members.length-1)];
+            child=this.members[helper.randInt(0,this.members.length-1)];
         }
 
         child.mutate();

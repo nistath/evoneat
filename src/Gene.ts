@@ -1,4 +1,4 @@
-class Gene{
+export default class Gene{
     innovation: number;
     start: number;
     target: number;
