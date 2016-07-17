@@ -1,13 +1,14 @@
-let fs: any = require("fs");
+const fs: any = require("fs");
 
 interface config {
+    evaluatorPath: string,
     cExcess: number, //The compatibility constant for excess genes.
     cDisjoint: number, //The compatibility constant for disjoint genes.
     cMatching: number, //The compatibility constant for matching genes.
     deltaThreshold: number, //The compatibility threshold.
     cSmallGenome: number, //The maximum number of genes a genome can have to be considered small.
     cSmallSpecies: number, //The number of members a species has in order to be considered small.
-    cStagnantSpecies: number,
+    cStagnantSpecies: number, //The number of generations a species must remain static, in order to become stagnant.
     cCull: number, //The fraction of its population a species will be culled to.
     pCrossover: number, //The probability that two parents will crossover before mutating.
     pDisable: number, //The probability a gene will be disabled if it's disabled in either parent.
@@ -20,13 +21,17 @@ interface config {
     neuronActivation: (number) => number //The default activation function for all neurons.
 }
 
-declare var require: {
-    <T>(path: string): T;
-    (paths: string[], callback: (...modules: any[]) => void): void;
-    ensure: (paths: string[], callback: (require: <T>(path: string) => T) => void) => void;
-};
+const cfg: config = <config>require("./config.js");
 
-let cfg: config = <config>require("./config.js");
+interface os{
+    cpus: () => Array<any>
+}
+
+const FARM_OPTIONS = {
+    maxConcurrentWorkers: <os>require('os').cpus().length, //Fix?
+    maxCallsPerWorker: Infinity,
+    maxConcurrentCallsPerWorker: 1
+};
 
 function randInt(min: number, max: number): number {
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -515,17 +520,17 @@ class Organism {
     }
 
     getFitness() {
-        if (varundefined(this.fitness)) {
+        /*if (varundefined(this.fitness)) {
             if (varundefined(this.phenome)) {
                 this.generate();
             }
             this.evaluate();
-        }
+        }*/
 
         return this.fitness;
     }
 
-    evaluate() {
+    evaluate(worker, callback) {
         let outputsConnected = false;
 
         for (let o = 1; o <= nOutputs; o++) {
@@ -690,6 +695,26 @@ class Pool {
             this.totalFitness += val.getAdjFitness();
         }
         return this.totalFitness;
+    }
+
+    tellFitness(species: number, member: number, fitness: number){
+        this.species[species].members[member].fitness=fitness;
+    }
+
+    evaluateAll(){
+        let concurrent=workerFarm(FARM_OPTIONS, require.resolve(cfg.evaluatorPath));
+        let count=this.populationSize;
+
+        function tally(species: number, member: number, fitness: number){
+            
+        }
+
+        for(let sp in this.species){
+            let spe=this.species[sp];
+            for(let me in spe){
+                spe.members[1].evaluate(concurrent, tally);
+            }
+        }
     }
 
     nextGeneration() {

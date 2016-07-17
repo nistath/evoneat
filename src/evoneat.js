@@ -1,5 +1,10 @@
 var fs = require("fs");
 var cfg = require("./config.js");
+var FARM_OPTIONS = {
+    maxConcurrentWorkers: require('os').cpus().length,
+    maxCallsPerWorker: Infinity,
+    maxConcurrentCallsPerWorker: 1
+};
 function randInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -328,15 +333,9 @@ var Organism = (function () {
         }
     };
     Organism.prototype.getFitness = function () {
-        if (varundefined(this.fitness)) {
-            if (varundefined(this.phenome)) {
-                this.generate();
-            }
-            this.evaluate();
-        }
         return this.fitness;
     };
-    Organism.prototype.evaluate = function () {
+    Organism.prototype.evaluate = function (worker, callback) {
         var outputsConnected = false;
         for (var o = 1; o <= nOutputs; o++) {
             if (this.phenome.neurons[nMaxHidden + nInputs + o].linksIn.length > 0) {
@@ -483,6 +482,21 @@ var Pool = (function () {
             this.totalFitness += val.getAdjFitness();
         }
         return this.totalFitness;
+    };
+    Pool.prototype.tellFitness = function (species, member, fitness) {
+        this.species[species].members[member].fitness = fitness;
+    };
+    Pool.prototype.evaluateAll = function () {
+        var concurrent = workerFarm(FARM_OPTIONS, require.resolve(cfg.evaluatorPath));
+        var count = this.populationSize;
+        function tally(species, member, fitness) {
+        }
+        for (var sp in this.species) {
+            var spe = this.species[sp];
+            for (var me in spe) {
+                spe.members[1].evaluate(concurrent, tally);
+            }
+        }
     };
     Pool.prototype.nextGeneration = function () {
         this.cull(false);
