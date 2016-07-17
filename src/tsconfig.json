@@ -13,9 +13,7 @@
         "removeComments": true,
         "noLib": false,
         "preserveConstEnums": true,
-        "suppressImplicitAnyIndexErrors": true,
-        "sourceRoot": "./src",
-        "outFile": "./build"
+        "suppressImplicitAnyIndexErrors": true
     },
     "exclude": [
         "node_modules",
