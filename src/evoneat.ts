@@ -3,7 +3,7 @@ const workerFarm: any = require("worker-farm");
 const fs: any = require("fs");
 
 interface config {
-    backup: boolean,
+    backup: number,
     evaluatorPath: string,
     cExcess: number, //The compatibility constant for excess genes.
     cDisjoint: number, //The compatibility constant for disjoint genes.
@@ -26,6 +26,7 @@ interface config {
 
 const cfg: config = <config>require("./config.js");
 
+/*
 interface os {
     cpus: () => Array<any>
 }
@@ -35,6 +36,7 @@ const FARM_OPTIONS = {
     maxCallsPerWorker: Infinity,
     maxConcurrentCallsPerWorker: 1
 };
+*/
 
 import * as help from "./modules/helper";
 
@@ -96,11 +98,10 @@ class Gene {
 class Organism {
     genome: Array<Gene> = [];
     geneList: Array<boolean> = [];
-    maxNeuron: number = 0;
+    maxNeuron: number = nInputs + nOutputs;
     innovationMin: number = Infinity;
     innovationMax: number = -Infinity;
     fitness: number;
-    adjFitness: number;
     phenome: neural.Network;
 
     sort() {
@@ -318,12 +319,12 @@ class Organism {
         }
 
         for (let val of this.genome) {
-            if (!(val.start <= nInputs && notInput)) {
+            if (!(val.start <= nInputs && notInput) && val.start < nInputs + nMaxHidden + nOutputs) {
                 if (!exists[val.start]) count++;
                 exists[val.start] = true;
             }
 
-            if (!(val.target <= nInputs && notInput)) {
+            if (!(val.target <= nInputs && notInput) && val.target < nInputs + nMaxHidden + nOutputs) {
                 if (!exists[val.target]) count++;
                 exists[val.target] = true;
             }
@@ -340,7 +341,7 @@ class Organism {
     }
 
     private addNeuron(index: number) {
-        if (!help.varundefined(this.genome[index])) {
+        if (!help.varundefined(this.genome[index]) && this.maxNeuron < nInputs + nOutputs + nMaxHidden) {
             this.genome[index].enabled = false;
             this.maxNeuron++;
             this.addLink(this.genome[index].start, this.maxNeuron, this.genome[index].weight);
@@ -354,17 +355,20 @@ class Organism {
         }
     }
 
-    mutate() {
-        if (Math.random() < cfg.pPerturb) {
-            this.perturbLinks();
-        }
+    addRandomLink() {
+        let n2 = this.randomNeuron(true); //Premature optimization not yet implemented.
+        let n1 = this.randomNeuron(false);
 
-        if (Math.random() < cfg.pLink) {
-            let n2 = this.randomNeuron(true);
-            let n1 = this.randomNeuron(false);
-            if(n1<nInputs+nMaxHidden+nOutputs && n2<nInputs+nMaxHidden+nOutputs)
-                this.addLink(n1, n2, cfg.newWeight());
-        }
+        if (n1 <= nInputs + nMaxHidden + nOutputs && n2 <= nInputs + nMaxHidden + nOutputs)
+            this.addLink(n1, n2, cfg.newWeight());
+    }
+
+    mutate() {
+        if (Math.random() < cfg.pPerturb)
+            this.perturbLinks();
+
+        if (Math.random() < cfg.pLink)
+            this.addRandomLink();
 
         if (Math.random() < cfg.pNeuron) {
             this.addNeuron(help.randInt(0, this.genome.length - 1));
@@ -392,12 +396,14 @@ class Organism {
 
         if (outputsConnected) {
             //Run evaluator.
-            let res = this.phenome.run([0.5]);
-            this.fitness = 900 - (Math.abs(res[0] - 2)) * 10;
-            if (this.fitness > 890) console.log(res)
+            let res = this.phenome.run([1]);
+            let res2 = this.phenome.run([2]);
+            this.fitness = 1/(Math.pow(res[0]+0.25,2) + Math.pow(res2[0]-0.5,2));
             if (this.fitness > maxFit) {
-                console.log(this.fitness);
+                console.log("fit"+this.fitness);
                 maxFit = this.fitness;
+                console.log(res[0]);
+                console.log(res2[0]);
             }
         }
         else {
@@ -410,10 +416,10 @@ class Organism {
 
 class Species {
     members: Array<Organism> = [];
-    sumFitness: number = -1;
+    avgFitness: number = 0;
     sorted: boolean = false;
     stagnant: number = 0;
-    prevMaxFitness: number = -Infinity;
+    maxFitness: number = 0;
 
     cull(allButTop: boolean): number { //Returns the number of members that got deleted.
         this.sortByFitness();
@@ -421,23 +427,14 @@ class Species {
         if (allButTop) {
             let temp = this.members[0];
 
-            if (temp.fitness <= this.prevMaxFitness) {
-                this.stagnant++;
-            }
+            this.members = [];
+            this.members.push(temp);
 
-            if (this.members.length <= cfg.cSmallSpecies) {
-                this.members = [];
-                this.members.push(temp);
-
-                return this.members.length - 1;
-            }
-            else {
-                return 0;
-            }
+            return this.members.length - 1;
         }
         else {
             let oglen = this.members.length;
-            while (this.members.length > cfg.cCull * oglen && this.members.length > 1) {
+            while (this.members.length > Math.ceil(cfg.cCull * oglen)) {
                 this.members.pop();
             }
             return oglen - this.members.length;
@@ -481,19 +478,21 @@ class Species {
         //insertionSort(newMember, this.members, function(a: Organism,b: Organism){return a.getFitness>b.getFitness;});
     }
 
-    getAdjFitness() {
-        this.sumFitness = 0;
+    getAvgFitness(): number {
+        this.avgFitness = 0;
         for (let val of this.members) {
-            val.adjFitness = val.getFitness() / this.members.length;
-            this.sumFitness += val.adjFitness;
+            this.avgFitness += val.getFitness();
         }
+        this.avgFitness /= this.members.length;
+
+        return this.avgFitness;
     }
 }
 
 class Pool {
     species: Array<Species> = [];
     generation: number = 0;
-    totalFitness: number;
+    totalAvgFitness: number;
     populationSize: number = 1;
 
     constructor(inputs: number, maxHidden: number, outputs: number, population: number) {
@@ -504,7 +503,7 @@ class Pool {
 
         let sp = new Species;
         let org = new Organism;
-        org.addLink(1, 3, cfg.newWeight());
+        org.addRandomLink();
         sp.members.push(org);
         this.species.push(sp);
     }
@@ -513,6 +512,7 @@ class Pool {
         for (let val of this.species) {
             if (val.compatible(child)) {
                 val.addMember(child);
+                this.populationSize++;
                 return;
             }
         }
@@ -529,31 +529,35 @@ class Pool {
         }
     }
 
-    removeUnfitSpecies() {
-        if (this.species.length > 2) {
-            let newArr = new Array<Species>();
-            for (let val of this.species) {
-                if (this.species.length > 2) {
-                    let t = (val.sumFitness / this.totalFitness) * this.populationSize;
-                    if (val.stagnant < cfg.cStagnantSpecies) {
-                        newArr.push(val);
-                    }
-                }
-                else {
-                    break;
-                }
+    removeStagnantSpecies() {
+        let newArr = new Array<Species>();
+
+        for (let val of this.species) {
+            val.sortByFitness();
+
+            if (val.members[0].fitness > val.maxFitness) {
+                val.stagnant = 0;
+                val.maxFitness = val.members[0].fitness;
+            }
+            else {
+                val.stagnant++;
             }
 
-            this.species = newArr;
+            if (val.stagnant < cfg.cStagnantSpecies || val.maxFitness == maxFit) {
+                newArr.push(val);
+            }
         }
+
+        this.species = newArr;
     }
 
-    calculateFitness() {
-        this.totalFitness = 0;
+    getTotalAvgFitness(): number {
+        this.totalAvgFitness = 0;
         for (let val of this.species) {
-            val.getAdjFitness();
-            this.totalFitness += val.sumFitness;
+            this.totalAvgFitness += val.getAvgFitness();
         }
+
+        return this.totalAvgFitness;
     }
 
     evaluateAll() {
@@ -566,39 +570,45 @@ class Pool {
     }
 
     nextGeneration() {
-        this.evaluateAll();
+        if (this.species.length == 0) console.log("dead");
 
-        this.calculateFitness();
+        this.getTotalAvgFitness();
         this.cull(false);
-        this.removeUnfitSpecies();
+        this.removeStagnantSpecies();
+
+        let children = new Array<Organism>();
+
         for (let val of this.species) {
-            let times = Math.floor(val.sumFitness / this.totalFitness);
-            for (let i = 0; i < times; i++) this.assignToSpecies(val.breed());
+            let times = Math.floor(val.avgFitness / this.totalAvgFitness) * nPopulation - 1;
+            times = nPopulation/this.species.length
+            for (let i = 0; i < times; i++) children.push(val.breed());
         }
+
         this.cull(true);
 
-        while (this.populationSize < nPopulation) {
-            this.assignToSpecies(help.randEntry(this.species).breed());
-            this.populationSize++;
+        while (this.populationSize + children.length < nPopulation) {
+            children.push(help.randEntry(this.species).breed());
+        }
+
+        for(let val of children){
+            this.assignToSpecies(val);
         }
 
         this.generation++;
 
-        if (cfg.backup) {
+        if (this.generation%cfg.backup == 0) {
             fs.writeFileSync("./saves/generation_" + this.generation + ".json", JSON.stringify(this));
         }
-        console.log("Completed generation number " + this.generation + ".");
-
-        if (this.species.length == 0) process.exit();
+        //console.log("Completed generation number " + this.generation + ".");
     }
 }
 
-let maxFit = -Infinity;
-let mainPool = new Pool(1, 3, 1, 500);
+let maxFit = 0;
+let mainPool = new Pool(1, 4, 1, 100);
 function klol() {
-    for (let i = 0; i < 5005; i++) {
+    for (let i = 0; i < 10000; i++) {
+        mainPool.evaluateAll();
         mainPool.nextGeneration();
-        if(i%50==0) fs.writeFileSync("./saves/generation_" + i + ".json", JSON.stringify(mainPool))
     }
 }
 
