@@ -1,0 +1,32 @@
+{
+  "name": "evoneatjs",
+  "version": "0.1.0",
+  "description": "A concurrent impementation of Neuroevolution of Augmenting Topologies for TypeScript and Node.js.",
+  "main": "lib/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/statNick/evoneatjs.git"
+  },
+  "keywords": [
+    "Neuroevolution",
+    "Neural",
+    "Networks",
+    "Machine",
+    "Learning"
+  ],
+  "author": "Nick Stathas",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/statNick/evoneatjs/issues"
+  },
+  "homepage": "https://github.com/statNick/evoneatjs#readme",
+  "dependencies": {
+    "worker-farm": "^1.3.1"
+  },
+  "devDependencies": {
+    "typings": "^1.4.0"
+  }
+}
