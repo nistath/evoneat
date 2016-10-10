@@ -355,7 +355,12 @@ class Organism {
 
     generate() {
         this.phenome = new neural.Network(nInputs, nMaxHidden, nOutputs);
-        this.phenome.generate(this.genome);
+
+        for (let gene of this.genome) {
+            if (gene.enabled) {
+                this.phenome.addLink(gene.start, gene.target, gene.weight);
+            }
+        }
     }
 
     getFitness() {

@@ -1,13 +1,5 @@
 import * as help from "./Helper";
 
-interface gene{
-    innovation: number;
-    start: number;
-    target: number;
-    weight: number;
-    enabled: boolean;
-};
-
 let neuronActivation: (number)=>number=function(x){return 2/(1+Math.exp(-4.9*x))-1;};
 
 export enum neuronPlace {
@@ -78,7 +70,7 @@ export class Network {
         }
     }
 
-    pushLink(start, target, weight) {
+    addLink(start, target, weight) {
         let s = this.neurons[start];
         let t = this.neurons[target];
 
@@ -93,14 +85,6 @@ export class Network {
 
         this.neurons[start] = s;
         this.neurons[target] = t;
-    }
-
-    generate(gen: Array<gene>){
-        for (let val of gen) {
-            if (val.enabled) {
-                this.pushLink(val.start, val.target, val.weight);
-            }
-        }
     }
 
     private propagate(index: number): number { //Calculates and returns the value of a neuron.
