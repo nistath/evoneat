@@ -1,2 +1,4 @@
 *.js
 /saves
+/lib
+/node_modules

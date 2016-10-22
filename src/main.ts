@@ -1,8 +1,8 @@
-import { config } from "./interfaces";
-import cfg from "./defaultConfig";
+//import { config } from "./interfaces"; // Maybe unnecessary
+import { config as cfg } from "./defaultConfig";
 
 import * as fs from "fs";
-const worker = require("worker-farm");
+//const worker = require("worker-farm");
 
 /*
 interface os {
@@ -334,7 +334,7 @@ class Organism {
     }
 
     addRandomLink() {
-        let n2 = this.randomNeuron(true); //Premature optimization not yet implemented.
+        let n2 = this.randomNeuron(true); //Premature optimization not yet implemented. :P
         let n1 = this.randomNeuron(false);
 
         if (n1 <= nInputs + nMaxHidden + nOutputs && n2 <= nInputs + nMaxHidden + nOutputs)
@@ -368,16 +368,7 @@ class Organism {
     }
 
     evaluate() {
-        let outputsConnected = false;
-
-        for (let o = 1; o <= nOutputs; o++) {
-            if (this.phenome.neurons[nMaxHidden + nInputs + o].linksIn.length > 0) {
-                outputsConnected = true;
-                break;
-            }
-        }
-
-        if (outputsConnected) {
+        if (this.phenome.outputsConnected()) {
             //Run evaluator.
             let res = this.phenome.run([1]);
             let res2 = this.phenome.run([-1]);
@@ -591,7 +582,7 @@ class Pool {
         this.generation++;
 
         if (this.generation % cfg.backup == 0) {
-            fs.writeFileSync("./saves/generation_" + this.generation + ".json", JSON.stringify(this));
+            fs.writeFileSync("../saves/generation_" + this.generation + ".json", JSON.stringify(this));
         }
         //console.log("Completed generation number " + this.generation + ".");
     }

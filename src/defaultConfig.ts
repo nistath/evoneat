@@ -1,6 +1,6 @@
 import { config } from "./interfaces";
 
-const config: config = {
+const cfg: config = {
   backup: 20,
   evaluatorPath: "./evaluator.js",
   cExcess: 1.0 , //The compatibility constant for excess genes.
@@ -22,4 +22,4 @@ const config: config = {
   neuronActivation: ((x: number): number => 2/(1+Math.exp(-4.9*x))-1) //The default activation function for all neurons.
 };
 
-export default config;
+export { cfg as config };

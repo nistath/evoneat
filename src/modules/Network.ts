@@ -1,56 +1,12 @@
 import * as help from "./Helper";
 
-let neuronActivation: (number)=>number=function(x){return 2/(1+Math.exp(-4.9*x))-1;};
-
-export enum neuronPlace {
-    INPUT = 1,
-    HIDDEN = 2,
-    OUTPUT = 3
-}
-
-export enum neuronType {
-    BIAS = -1,
-    NULL = 0,
-    SENSOR = 1,
-    NEURON = 2
-}
-
-export class Neuron {
-    id: number;
-    type: neuronType;
-    place: neuronPlace;
-    value: number = 0;
-    frame: number = 0;
-    linksIn: Array<Link> = [];
-
-    constructor(what: neuronType, where: neuronPlace) {
-        this.type = what;
-        this.place = where;
-    }
-
-    activation() {
-        this.value = 2/(1+Math.exp(-4.9*this.value))-1;
-        return this.value;
-    }
-}
-
-class Link {
-    start: number;
-    target: number;
-    weight: number;
-
-    constructor(s, t, w) {
-        this.start = s;
-        this.target = t;
-        this.weight = w;
-    }
-}
+let neuronActivation = (x) => 2/(1+Math.exp(-4.9*x))-1;
 
 export class Network {
-    neurons: Array<Neuron>;
-    frame: number = 0;
+    private neurons: Array<Neuron>;
+    private frame: number = 0;
     inputs: number;
-    maxHidden: number;
+    private maxHidden: number;
     outputs: number;
 
     constructor(inputs: number, maxHidden: number, outputs: number) {
@@ -86,6 +42,16 @@ export class Network {
         this.neurons[start] = s;
         this.neurons[target] = t;
     }
+	
+	outputsConnected (): boolean {
+        for (let o = 1; o <= this.outputs; o++) {
+            if (this.neurons[this.maxHidden + this.inputs + o].linksIn.length > 0) {
+                return true;
+            }
+        }
+		
+		return false;
+	}
 
     private propagate(index: number): number { //Calculates and returns the value of a neuron.
         if (this.neurons[index].place == neuronPlace.INPUT || this.neurons[index].frame == this.frame) {
@@ -127,5 +93,49 @@ export class Network {
         }
 
         return outputs;
+    }
+}
+
+enum neuronPlace {
+    INPUT = 1,
+    HIDDEN = 2,
+    OUTPUT = 3
+}
+
+enum neuronType {
+    BIAS = -1,
+    NULL = 0,
+    SENSOR = 1,
+    NEURON = 2
+}
+
+class Neuron {
+    id: number;
+    type: neuronType;
+    place: neuronPlace;
+    value: number = 0;
+    frame: number = 0;
+    linksIn: Array<Link> = [];
+
+    constructor(what: neuronType, where: neuronPlace) {
+        this.type = what;
+        this.place = where;
+    }
+
+    activation() {
+        this.value = 2/(1+Math.exp(-4.9*this.value))-1;
+        return this.value;
+    }
+}
+
+class Link {
+    start: number;
+    target: number;
+    weight: number;
+
+    constructor(s, t, w) {
+        this.start = s;
+        this.target = t;
+        this.weight = w;
     }
 }

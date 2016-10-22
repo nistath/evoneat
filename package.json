@@ -1,8 +1,9 @@
 {
   "name": "evoneatjs",
   "version": "0.1.0",
-  "description": "A concurrent impementation of Neuroevolution of Augmenting Topologies for TypeScript and Node.js.",
-  "main": "lib/main.js",
+  "description": "A concurrent impementation of Neuroevolution of Augmenting Topologies for Node.js with TypeScript.",
+  "main": "./lib/main.js",
+  "types": "./lib/main.d.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
