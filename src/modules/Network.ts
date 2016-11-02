@@ -1,4 +1,4 @@
-import * as help from "./Helper";
+import * as hlp from "./Helper";
 
 let neuronActivation = (x) => 2/(1+Math.exp(-4.9*x))-1;
 
@@ -30,10 +30,10 @@ export class Network {
         let s = this.neurons[start];
         let t = this.neurons[target];
 
-        if (help.varundefined(s)) {
+        if (hlp.isundef(s)) {
             s = new Neuron(neuronType.NEURON, neuronPlace.HIDDEN);
         }
-        if (help.varundefined(t)) {
+        if (hlp.isundef(t)) {
             t = new Neuron(neuronType.NEURON, neuronPlace.HIDDEN);
         }
 
@@ -42,14 +42,14 @@ export class Network {
         this.neurons[start] = s;
         this.neurons[target] = t;
     }
-	
+
 	outputsConnected (): boolean {
         for (let o = 1; o <= this.outputs; o++) {
             if (this.neurons[this.maxHidden + this.inputs + o].linksIn.length > 0) {
                 return true;
             }
         }
-		
+
 		return false;
 	}
 

@@ -1,7 +1,7 @@
 import { config } from "./interfaces";
 
 const cfg: config = {
-  backup: 20,
+  backup: 100,
   evaluatorPath: "./evaluator.js",
   cExcess: 1.0 , //The compatibility constant for excess genes.
   cDisjoint: 1.0, //The compatibility constant for disjoint genes.

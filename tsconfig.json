@@ -20,13 +20,13 @@
 	  "declarationDir": "./lib"
   },
   "exclude": [
-      "node_modules",
-      "typings/browser",
-      "typings/browser.d.ts"
+    "node_modules",
+    "typings/browser",
+    "typings/browser.d.ts"
   ],
   "compileOnSave": true,
   "buildOnSave": false,
   "atom": {
-      "rewriteTsconfig": false
+    "rewriteTsconfig": false
   }
 }

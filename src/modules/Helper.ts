@@ -6,7 +6,7 @@ export function randEntry(arr: Array<any>) {
     return arr[randInt(0, arr.length - 1)];
 }
 
-export function varundefined(val: any): boolean {
+export function isundef(val: any): boolean {
     return val === undefined || val === null;
 }
 

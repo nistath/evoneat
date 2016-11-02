@@ -16,10 +16,10 @@ const FARM_OPTIONS = {
 };
 */
 
-import * as help from "./modules/helper";
+import * as hlp from "./modules/Helper";
 
 //I'd like these to belong in class Pool, due to their pool specific nature, but can't reference them from child objects.
-let innovations = new Array<Array<number>>();
+let innovations = new Array< Array<number> >();
 let innovationCount: number = 0;
 
 function innovationCheck(Gene: Gene): number {
@@ -31,11 +31,11 @@ function innovationCheck(Gene: Gene): number {
         innovations[start][target] = innovationCount;
     }
 
-    if (help.varundefined(innovations[start])) {
+    if (hlp.isundef(innovations[start])) {
         innovations[start] = new Array<number>();
         newInnovation();
     }
-    else if (help.varundefined(innovations[start][target])) {
+    else if (hlp.isundef(innovations[start][target])) {
         newInnovation();
     }
     return innovations[start][target];
@@ -63,7 +63,14 @@ class Gene {
         this.innovation = innovationCheck(this);
     }
 
-    perturb() {
+    clone () {
+        let clone = new Gene(this.start, this.target, this.weight, this.enabled);
+        clone.innovation = this.innovation;
+
+        return clone;
+    }
+
+    perturb () {
         if (Math.random() < cfg.pPerturbUniform) {
             this.weight *= Math.random();
         }
@@ -79,14 +86,29 @@ class Organism {
     maxNeuron: number = nInputs + nOutputs;
     innovationMin: number = Infinity;
     innovationMax: number = -Infinity;
-    fitness: number;
+    fitness: number = 0;
     phenome: neural.Network;
 
-    sort() {
-        function compare(a, b) {
-            return a.innovation - b.innovation;
+    clone() {
+        let clone = new Organism;
+        clone.maxNeuron = this.maxNeuron;
+        clone.innovationMin = this.innovationMin;
+        clone.innovationMax = this.innovationMax;
+        clone.fitness = this.fitness;
+        clone.phenome = this.phenome;
+
+        for (let i in this.geneList) {
+            clone.geneList[i] = this.geneList[i];
         }
-        this.genome.sort(compare);
+
+        for (let i in this.genome) {
+            clone.genome[i] = this.genome[i].clone();
+        }
+
+        return clone;
+    }
+    sortGenome() {
+        this.genome.sort((a, b) => a.innovation - b.innovation);
     }
 
     pushGene(gene: Gene) {
@@ -99,13 +121,15 @@ class Organism {
     }
 
     crossover(other: Organism): Organism {
-        if (this.getFitness > other.getFitness) {
-            var p1: Organism = this;
-            var p2: Organism = other;
+        let p1: Organism = this;
+        let p2: Organism = other;
+        if (this.getFitness() > other.getFitness()) {
+            p1 = this;
+            p2 = other;
         }
         else {
-            var p1: Organism = other;
-            var p2: Organism = this;
+            p1 = other;
+            p2 = this;
         }
 
         let child = new Organism();
@@ -117,7 +141,7 @@ class Organism {
 
         for (let val of p1.genome) {
             let push: Gene = val;
-            if (!help.varundefined(match[val.innovation])) {
+            if (!hlp.isundef(match[val.innovation])) {
                 if (Math.random() < cfg.pKeepNotFit) {
                     push = match[val.innovation];
                 }
@@ -190,7 +214,7 @@ class Organism {
                 exc++;
             }
             else {
-                if (help.varundefined(exists[val.innovation])) {
+                if (hlp.isundef(exists[val.innovation])) {
                     dis++;
                 }
                 else {
@@ -308,7 +332,7 @@ class Organism {
             }
         }
 
-        let index = help.randInt(1, count);
+        let index = hlp.randInt(1, count);
         for (let val in exists) {
             index--;
             if (index == 0) {
@@ -319,7 +343,7 @@ class Organism {
     }
 
     private addNeuron(index: number) {
-        if (!help.varundefined(this.genome[index]) && this.maxNeuron < nInputs + nOutputs + nMaxHidden) {
+        if (!hlp.isundef(this.genome[index]) && this.maxNeuron < nInputs + nOutputs + nMaxHidden) {
             this.genome[index].enabled = false;
             this.maxNeuron++;
             this.addLink(this.genome[index].start, this.maxNeuron, this.genome[index].weight);
@@ -349,7 +373,7 @@ class Organism {
             this.addRandomLink();
 
         if (Math.random() < cfg.pNeuron) {
-            this.addNeuron(help.randInt(0, this.genome.length - 1));
+            this.addNeuron(hlp.randInt(0, this.genome.length - 1));
         }
     }
 
@@ -427,17 +451,17 @@ class Species {
     breed() {
         let child: Organism;
         if (Math.random() < cfg.pCrossover) {
-            let p1 = help.randEntry(this.members);
-            let p2 = help.randEntry(this.members);
+            let p1 = hlp.randEntry(this.members);
+            let p2 = hlp.randEntry(this.members);
             if (p1 == p2) {
-                child = p1;
+                child = p1.clone();
             }
             else {
                 child = p1.crossover(p2);
             }
         }
         else {
-            child = help.randEntry(this.members);
+            child = hlp.randEntry(this.members);
         }
 
         child.mutate();
@@ -572,7 +596,7 @@ class Pool {
         this.getPopulationSize();
 
         while (this.populationSize + children.length < nPopulation) {
-            children.push(help.randEntry(this.species).breed());
+            children.push(hlp.randEntry(this.species).breed());
         }
 
         for (let val of children) {
@@ -580,6 +604,10 @@ class Pool {
         }
 
         this.generation++;
+
+        if (!fs.existsSync("../saves")){
+            fs.mkdirSync("../saves");
+        }
 
         if (this.generation % cfg.backup == 0) {
             fs.writeFileSync("../saves/generation_" + this.generation + ".json", JSON.stringify(this));
@@ -589,6 +617,7 @@ class Pool {
 }
 
 let maxFit = 0;
+
 let mainPool = new Pool(1, 4, 1, 100);
 function klol() {
     for (let i = 0; i < 10000; i++) {
