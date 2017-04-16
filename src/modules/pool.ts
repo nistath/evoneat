@@ -12,7 +12,6 @@ export class Pool {
 	globalMax: number = 0; // Global maximum fitness.
 
 	constructor(private experiment: Experiment) {
-
 		let org = new Organism(this.experiment);
 		org.addRandomLink();
 		this.assignToSpecies(org);

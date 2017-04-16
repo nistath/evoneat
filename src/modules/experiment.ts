@@ -1,5 +1,6 @@
 import { defaultConfig } from '../defaultConfig';
 import { Config, Gene } from '../interfaces';
+import { Pool } from './pool';
 import { isundef } from './helper';
 
 export class Experiment {
@@ -7,9 +8,13 @@ export class Experiment {
   private innovationCount: number = 0;
   public config: Config;
   public maxFit: number;
+  public pool: Pool;
 
-  constructor(public nInputs: number, public nMaxHidden: number, public nOutputs: number, public nPopulation: number, suppliedConfig: Config) {
-    for(let id in defaultConfig) this.config[id] = suppliedConfig[id] || defaultConfig[id];
+  constructor(public nInputs: number, public nMaxHidden: number, public nOutputs: number, public nPopulation: number, suppliedConfig?: Config) {
+    this.config = defaultConfig;
+    if (suppliedConfig) for(let id in suppliedConfig) this.config[id] = suppliedConfig[id];
+    
+    this.pool = new Pool(this);
   }
 
   public getInnovation(gene: Gene): number {

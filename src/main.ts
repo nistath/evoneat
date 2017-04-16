@@ -12,3 +12,7 @@ const FARM_OPTIONS = {
 };
 */
 import { Experiment } from "./modules/experiment";
+
+let p = new Experiment(2,10,1, 20);
+
+p.pool.loop(10);
