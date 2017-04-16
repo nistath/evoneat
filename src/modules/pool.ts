@@ -27,7 +27,7 @@ export class Pool {
 			}
 		}
 
-		let next = new Species;
+		let next = new Species(this.experiment);
 		next.addMember(child);
 		this.species.push(next);
 		this.populationSize++;

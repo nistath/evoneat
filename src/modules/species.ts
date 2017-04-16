@@ -1,5 +1,5 @@
 import { Organism } from './organism';
-import { Singleton } from "./singleton";
+import { Experiment } from './experiment';
 import { randEntry } from './helper';
 
 export class Species {
@@ -8,6 +8,8 @@ export class Species {
 	sorted: boolean = true;
 	stagnant: number = 0;
 	maxFitness: number = 0;
+
+	constructor(private experiment: Experiment) {}
 
 	cull(allButTop: boolean): number { // Returns the number of members that got deleted.
 		this.sortByFitness();
@@ -19,7 +21,7 @@ export class Species {
 		}
 		else {
 			let oglen = this.members.length;
-			while (this.members.length > Math.ceil(Singleton.getInstance().getConfig().cCull * oglen)) {
+			while (this.members.length > Math.ceil(this.experiment.config.cCull * oglen)) {
 				this.members.pop();
 			}
 			return oglen - this.members.length;
@@ -35,7 +37,7 @@ export class Species {
 
 	breed() {
 		let child: Organism;
-		if (Math.random() < Singleton.getInstance().getConfig().pCrossover) {
+		if (Math.random() < this.experiment.config.pCrossover) {
 			let p1 = randEntry(this.members);
 			let p2 = randEntry(this.members);
 			child = p1.crossover(p2);

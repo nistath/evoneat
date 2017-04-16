@@ -220,7 +220,7 @@ export class Organism {
 	*/
 
 	addLink(s: number, t: number, weight) {
-		let gene = new Gene(s, t, weight, true);
+		let gene = new Gene(this.experiment, s, t, weight, true);
 		this.pushGene(gene);
 	}
 
