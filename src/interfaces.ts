@@ -1,4 +1,4 @@
-export interface config {
+export interface Config {
 	backup: number,
 	evaluatorPath: string,
 	cExcess: number, //The compatibility constant for excess genes.
@@ -19,4 +19,12 @@ export interface config {
 	pKeepNotFit: number, //Keep the matching Gene from the least fit Organism during crossover.
 	newWeight: () => number, //The weight a new gene will spawn with.
 	neuronActivation: (number) => number //The default activation function for all neurons.
+}
+
+export interface Gene {
+	innovation: number;
+	start: number;
+	target: number;
+	weight: number;
+	enabled: boolean;
 }

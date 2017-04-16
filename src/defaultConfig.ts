@@ -1,8 +1,8 @@
-import { config } from "./interfaces";
+import { Config } from "./interfaces";
 
-const cfg: config = {
-	backup: 0,
-	evaluatorPath: "./evaluator.js",
+export const defaultConfig: Config = {
+	backup: 10,
+	evaluatorPath: './evaluator',
 	cExcess: 1.0, //The compatibility constant for excess genes.
 	cDisjoint: 1.0, //The compatibility constant for disjoint genes.
 	cMatching: 0.4, //The compatibility constant for matching genes.
@@ -22,5 +22,3 @@ const cfg: config = {
 	newWeight: ((): number => 4 * Math.random() - 2), //The weight a new gene will spawn with.
 	neuronActivation: ((x: number): number => 2 / (1 + Math.exp(-4.9 * x)) - 1) //The default activation function for all neurons.
 };
-
-export { cfg as config };

@@ -1,28 +1,24 @@
-import * as hlp from "./Helper";
+import { isundef } from './helper';
+import { Experiment } from './experiment';
 
-let neuronActivation = (x) => 2 / (1 + Math.exp(-4.9 * x)) - 1;
+let neuronActivation: (x: number) => number;
 
 export class Network {
 	private neurons: Array<Neuron>;
 	private frame: number = 0;
-	inputs: number;
-	private maxHidden: number;
-	outputs: number;
 
-	constructor(inputs: number, maxHidden: number, outputs: number) {
+	constructor(private experiment: Experiment) {
 		this.neurons = Array<Neuron>();
 		this.neurons[0] = new Neuron(neuronType.BIAS, neuronPlace.INPUT);
 		this.neurons[0].value = 1;
-		this.inputs = inputs;
-		this.maxHidden = maxHidden;
-		this.outputs = outputs;
+		neuronActivation = this.experiment.config.neuronActivation;
 
-		for (let i = 1; i <= this.inputs; i++) {
+		for (let i = 1; i <= this.experiment.nInputs; i++) {
 			this.neurons[i] = new Neuron(neuronType.SENSOR, neuronPlace.INPUT);
 		}
 
-		for (let o = 0; o <= this.outputs; o++) {
-			this.neurons[this.inputs + this.maxHidden + 1 + o] = new Neuron(neuronType.NEURON, neuronPlace.OUTPUT);
+		for (let o = 0; o <= this.experiment.nOutputs; o++) {
+			this.neurons[this.experiment.nInputs + this.experiment.nMaxHidden + 1 + o] = new Neuron(neuronType.NEURON, neuronPlace.OUTPUT);
 		}
 	}
 
@@ -30,10 +26,10 @@ export class Network {
 		let s = this.neurons[start];
 		let t = this.neurons[target];
 
-		if (hlp.isundef(s)) {
+		if (isundef(s)) {
 			s = new Neuron(neuronType.NEURON, neuronPlace.HIDDEN);
 		}
-		if (hlp.isundef(t)) {
+		if (isundef(t)) {
 			t = new Neuron(neuronType.NEURON, neuronPlace.HIDDEN);
 		}
 
@@ -44,8 +40,8 @@ export class Network {
 	}
 
 	outputsConnected(): boolean {
-		for (let o = 1; o <= this.outputs; o++) {
-			if (this.neurons[this.maxHidden + this.inputs + o].linksIn.length > 0) {
+		for (let o = 1; o <= this.experiment.nOutputs; o++) {
+			if (this.neurons[this.experiment.nMaxHidden + this.experiment.nInputs + o].linksIn.length > 0) {
 				return true;
 			}
 		}
@@ -77,18 +73,17 @@ export class Network {
 	run(inputs: Array<number>): Array<number> {
 		this.frame++;
 
-		if (inputs.length != this.inputs) {
-			console.log("Invalid number of inputs given during network execution.");
-			return;
+		if (inputs.length != this.experiment.nInputs) {
+			throw new Error("Invalid number of this.experiment.nInputs given during network execution.");
 		}
 
-		for (let i = 1; i <= this.inputs; i++) {
-			this.neurons[i].value = inputs[i - 1];
+		for (let i = 1; i <= this.experiment.nInputs; i++) {
+			this.neurons[i].value = this.experiment.nInputs[i - 1];
 		}
 
 		let outputs = new Array<number>();
-		for (let o = 1; o <= this.outputs; o++) {
-			let current = this.inputs + this.maxHidden + o;
+		for (let o = 1; o <= this.experiment.nOutputs; o++) {
+			let current = this.experiment.nInputs + this.experiment.nMaxHidden + o;
 			outputs.push(this.propagate(current));
 		}
 
@@ -123,8 +118,7 @@ class Neuron {
 	}
 
 	activation() {
-		this.value = 2 / (1 + Math.exp(-4.9 * this.value)) - 1;
-		return this.value;
+		return this.value = neuronActivation(this.value);
 	}
 }
 
