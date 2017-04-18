@@ -1,24 +1,21 @@
-import { isundef } from './helper';
-import { Experiment } from './experiment';
-
 let neuronActivation: (x: number) => number;
 
-export class Network {
+class Network {
 	private neurons: Array<Neuron>;
 	private frame: number = 0;
 
-	constructor(private experiment: Experiment) {
+	constructor() {
 		this.neurons = Array<Neuron>();
 		this.neurons[0] = new Neuron(neuronType.BIAS, neuronPlace.INPUT);
 		this.neurons[0].value = 1;
-		neuronActivation = this.experiment.config.neuronActivation;
+		neuronActivation = experiment.config.neuronActivation;
 
-		for (let i = 1; i <= this.experiment.nInputs; i++) {
+		for (let i = 1; i <= experiment.nInputs; i++) {
 			this.neurons[i] = new Neuron(neuronType.SENSOR, neuronPlace.INPUT);
 		}
 
-		for (let o = 0; o <= this.experiment.nOutputs; o++) {
-			this.neurons[this.experiment.nInputs + this.experiment.nMaxHidden + 1 + o] = new Neuron(neuronType.NEURON, neuronPlace.OUTPUT);
+		for (let o = 0; o <= experiment.nOutputs; o++) {
+			this.neurons[experiment.nInputs + experiment.nMaxHidden + 1 + o] = new Neuron(neuronType.NEURON, neuronPlace.OUTPUT);
 		}
 	}
 
@@ -40,8 +37,8 @@ export class Network {
 	}
 
 	outputsConnected(): boolean {
-		for (let o = 1; o <= this.experiment.nOutputs; o++) {
-			if (this.neurons[this.experiment.nMaxHidden + this.experiment.nInputs + o].linksIn.length > 0) {
+		for (let o = 1; o <= experiment.nOutputs; o++) {
+			if (this.neurons[experiment.nMaxHidden + experiment.nInputs + o].linksIn.length > 0) {
 				return true;
 			}
 		}
@@ -73,17 +70,17 @@ export class Network {
 	run(inputs: Array<number>): Array<number> {
 		this.frame++;
 
-		if (inputs.length != this.experiment.nInputs) {
-			throw new Error("Invalid number of this.experiment.nInputs given during network execution.");
+		if (inputs.length != experiment.nInputs) {
+			throw new Error("Invalid number of experiment.nInputs given during network execution.");
 		}
 
-		for (let i = 1; i <= this.experiment.nInputs; i++) {
-			this.neurons[i].value = this.experiment.nInputs[i - 1];
+		for (let i = 1; i <= experiment.nInputs; i++) {
+			this.neurons[i].value = experiment.nInputs[i - 1];
 		}
 
 		let outputs = new Array<number>();
-		for (let o = 1; o <= this.experiment.nOutputs; o++) {
-			let current = this.experiment.nInputs + this.experiment.nMaxHidden + o;
+		for (let o = 1; o <= experiment.nOutputs; o++) {
+			let current = experiment.nInputs + experiment.nMaxHidden + o;
 			outputs.push(this.propagate(current));
 		}
 

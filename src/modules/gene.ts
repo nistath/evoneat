@@ -1,25 +1,23 @@
-import { Experiment } from './experiment';
-
-export class Gene {
+class Gene {
 	innovation: number;
 
-	constructor(private experiment: Experiment, public start: number,	public target: number, public weight: number, public enabled: boolean) {
-		this.innovation = this.experiment.getInnovation(this);
+	constructor(public start: number,	public target: number, public weight: number, public enabled: boolean) {
+		this.innovation = experiment.getInnovation(this);
 	}
 
 	clone() {
-		let clone = new Gene(this.experiment, this.start, this.target, this.weight, this.enabled);
+		let clone = new Gene(this.start, this.target, this.weight, this.enabled);
 		clone.innovation = this.innovation;
 
 		return clone;
 	}
 
 	perturb() {
-		if (Math.random() < this.experiment.config.pPerturbUniform) {
+		if (Math.random() < experiment.config.pPerturbUniform) {
 			this.weight *= Math.random();
 		}
 		else {
-			this.weight = this.experiment.config.newWeight();
+			this.weight = experiment.config.newWeight();
 		}
 	}
 }

@@ -1,31 +1,26 @@
-import { Organism } from './organism';
-import { Experiment } from './experiment';
-import { randEntry } from './helper';
-
-export class Species {
+class Species {
 	members: Array<Organism> = [];
 	avgFitness: number = 0;
 	sorted: boolean = true;
 	stagnant: number = 0;
 	maxFitness: number = 0;
 
-	constructor(private experiment: Experiment) {}
+	constructor() {}
 
-	cull(allButTop: boolean): number { // Returns the number of members that got deleted.
+	cull(allButTop: boolean): number {
 		this.sortByFitness();
 
 		if (allButTop) {
 			this.members = this.members.slice(0, 1);
-
-			return this.members.length - 1;
 		}
 		else {
 			let oglen = this.members.length;
-			while (this.members.length > Math.ceil(this.experiment.config.cCull * oglen)) {
+			while (this.members.length > Math.ceil(experiment.config.cCull * oglen)) {
 				this.members.pop();
 			}
-			return oglen - this.members.length;
 		}
+
+		return this.members.length;
 	}
 
 	sortByFitness() {
@@ -37,7 +32,7 @@ export class Species {
 
 	breed() {
 		let child: Organism;
-		if (Math.random() < this.experiment.config.pCrossover) {
+		if (Math.random() < experiment.config.pCrossover) {
 			let p1 = randEntry(this.members);
 			let p2 = randEntry(this.members);
 			child = p1.crossover(p2);

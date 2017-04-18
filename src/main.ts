@@ -11,8 +11,7 @@ const FARM_OPTIONS = {
   maxConcurrentCallsPerWorker: 1
 };
 */
-import { Experiment } from "./modules/experiment";
+/// <reference path="modules/experiment.ts" />
 
-let p = new Experiment(2,10,1, 20);
-
-p.pool.loop(10);
+import { Experiment } from './modules/experiment';
+var experiment = new Experiment(1,2,3,3);

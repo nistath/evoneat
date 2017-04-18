@@ -1,9 +1,4 @@
-import { Gene } from './gene';
-import { Network } from './network';
-import { Experiment } from './experiment';
-import { isundef, randInt } from './helper';
-
-export class Organism {
+class Organism {
 	genome: Array<Gene> = [];
 	geneList: Array<boolean> = [];
 	maxNeuron: number;
@@ -12,16 +7,12 @@ export class Organism {
 	fitness: number = 0;
 	phenome: Network;
 
-	constructor(private experiment: Experiment) {
+	constructor() {
 		this.maxNeuron = experiment.nInputs + experiment.nOutputs;
 	}
 
-	private newOrganism() {
-		return new Organism(this.experiment);
-	}
-
 	clone() {
-		let clone = this.newOrganism();
+		let clone = new Organism();
 		clone.maxNeuron = this.maxNeuron;
 		clone.innovationMin = this.innovationMin;
 		clone.innovationMax = this.innovationMax;
@@ -63,7 +54,7 @@ export class Organism {
 			p2 = this;
 		}
 
-		let child = this.newOrganism();
+		let child = new Organism();
 
 		let match = new Array<Gene>();
 		for (let val of p2.genome) {
@@ -73,10 +64,10 @@ export class Organism {
 		for (let val of p1.genome) {
 			let push: Gene = val;
 			if (!isundef(match[val.innovation])) {
-				if (Math.random() < this.experiment.config.pKeepNotFit) {
+				if (Math.random() < experiment.config.pKeepNotFit) {
 					push = match[val.innovation];
 				}
-				push.enabled = !((!val.enabled || !match[val.innovation].enabled) && Math.random() < this.experiment.config.pDisable);
+				push.enabled = !((!val.enabled || !match[val.innovation].enabled) && Math.random() < experiment.config.pDisable);
 			}
 			child.pushGene(push);
 		}
@@ -165,12 +156,12 @@ export class Organism {
 		}
 
 		let maxlen = Math.max(this.genome.length, other.genome.length);
-		let N = (maxlen > this.experiment.config.cSmallGenome) ? maxlen : 1;
-		return (this.experiment.config.cDisjoint * dis / N) + (this.experiment.config.cExcess * exc / N) + (this.experiment.config.cMatching * wDif / mat);
+		let N = (maxlen > experiment.config.cSmallGenome) ? maxlen : 1;
+		return (experiment.config.cDisjoint * dis / N) + (experiment.config.cExcess * exc / N) + (experiment.config.cMatching * wDif / mat);
 	}
 
 	compatible(other: Organism) {
-		return this.compatibility(other) < this.experiment.config.deltaThreshold
+		return this.compatibility(other) < experiment.config.deltaThreshold
 	}
 
 	/*Compatibility function for alternate method.
@@ -220,13 +211,13 @@ export class Organism {
 	*/
 
 	addLink(s: number, t: number, weight) {
-		let gene = new Gene(this.experiment, s, t, weight, true);
+		let gene = new Gene(s, t, weight, true);
 		this.pushGene(gene);
 	}
 
 	/* Insertion sort addLink for the alternate crossover method.
 	private addLink(s: number, t: number){
-		let gen=new Gene(s, t, this.experiment.config.newWeight(), true);
+		let gen=new Gene(s, t, experiment.config.newWeight(), true);
 		let i=this.genome.length-1;
 		while(i>0 && this.genome[i]<this.genome[i-1]){
 			swap(this.genome[i],this.genome[i-1]); //Check if swap actually changes anything in the array
@@ -240,24 +231,24 @@ export class Organism {
 		let exists = new Array<boolean>();
 
 		if (!notInput) {
-			for (let i = 0; i <= this.experiment.nInputs; i++) {
+			for (let i = 0; i <= experiment.nInputs; i++) {
 				exists[i] = true;
 				count++;
 			}
 		}
 
-		for (let o = 0; o < this.experiment.nOutputs; o++) {
-			exists[this.experiment.nInputs + this.experiment.nMaxHidden + 1 + o] = true;
+		for (let o = 0; o < experiment.nOutputs; o++) {
+			exists[experiment.nInputs + experiment.nMaxHidden + 1 + o] = true;
 			count++;
 		}
 
 		for (let val of this.genome) {
-			if (!(val.start <= this.experiment.nInputs && notInput) && val.start < this.experiment.nInputs + this.experiment.nMaxHidden + this.experiment.nOutputs) {
+			if (!(val.start <= experiment.nInputs && notInput) && val.start < experiment.nInputs + experiment.nMaxHidden + experiment.nOutputs) {
 				if (!exists[val.start]) count++;
 				exists[val.start] = true;
 			}
 
-			if (!(val.target <= this.experiment.nInputs && notInput) && val.target < this.experiment.nInputs + this.experiment.nMaxHidden + this.experiment.nOutputs) {
+			if (!(val.target <= experiment.nInputs && notInput) && val.target < experiment.nInputs + experiment.nMaxHidden + experiment.nOutputs) {
 				if (!exists[val.target]) count++;
 				exists[val.target] = true;
 			}
@@ -274,7 +265,7 @@ export class Organism {
 	}
 
 	private addNeuron(index: number) {
-		if (!isundef(this.genome[index]) && this.maxNeuron < this.experiment.nInputs + this.experiment.nOutputs + this.experiment.nMaxHidden) {
+		if (!isundef(this.genome[index]) && this.maxNeuron < experiment.nInputs + experiment.nOutputs + experiment.nMaxHidden) {
 			this.genome[index].enabled = false;
 			this.maxNeuron++;
 			this.addLink(this.genome[index].start, this.maxNeuron, this.genome[index].weight);
@@ -292,18 +283,18 @@ export class Organism {
 		let n2 = this.randomNeuron(true); //Premature optimization not yet implemented. :P
 		let n1 = this.randomNeuron(false);
 
-		if (n1 <= this.experiment.nInputs + this.experiment.nMaxHidden + this.experiment.nOutputs && n2 <= this.experiment.nInputs + this.experiment.nMaxHidden + this.experiment.nOutputs)
-			this.addLink(n1, n2, this.experiment.config.newWeight());
+		if (n1 <= experiment.nInputs + experiment.nMaxHidden + experiment.nOutputs && n2 <= experiment.nInputs + experiment.nMaxHidden + experiment.nOutputs)
+			this.addLink(n1, n2, experiment.config.newWeight());
 	}
 
 	mutate() {
-		if (Math.random() < this.experiment.config.pPerturb)
+		if (Math.random() < experiment.config.pPerturb)
 			this.perturbLinks();
 
-		if (Math.random() < this.experiment.config.pLink)
+		if (Math.random() < experiment.config.pLink)
 			this.addRandomLink();
 
-		if (Math.random() < this.experiment.config.pNeuron) {
+		if (Math.random() < experiment.config.pNeuron) {
 			this.addNeuron(randInt(0, this.genome.length - 1));
 		}
 	}
@@ -314,7 +305,7 @@ export class Organism {
 	}
 
 	generate() {
-		this.phenome = new Network(this.experiment);
+		this.phenome = new Network();
 
 		for (let gene of this.genome) {
 			if (gene.enabled) {
@@ -335,9 +326,9 @@ export class Organism {
 			let res3 = this.phenome.run([0]);
 			this.fitness = 3 / (Math.pow(res[0] + 0.25, 2) + Math.pow(res2[0] - 0.5, 2) + Math.pow(res3[0], 2));
 
-			if (this.fitness > this.experiment.maxFit) {
+			if (this.fitness > experiment.maxFit) {
 				console.log("fit" + this.fitness);
-				this.experiment.maxFit = this.fitness;
+				experiment.maxFit = this.fitness;
 				console.log(res[0]);
 				console.log(res2[0]);
 				console.log(res3[0]);
