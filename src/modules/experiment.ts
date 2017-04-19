@@ -1,6 +1,4 @@
 import * as fs from 'fs';
-import { Config } from '../interfaces';
-import { defaultConfig } from '../defaultConfig';
 
 class Experiment {
 	private innovations = new Array<Array<number>>();

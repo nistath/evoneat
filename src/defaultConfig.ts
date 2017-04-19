@@ -1,6 +1,4 @@
-import { Config } from "./interfaces";
-
-export const defaultConfig: Config = {
+const defaultConfig: Config = {
 	backup: 10,
 	evaluatorPath: './evaluator',
 	cExcess: 1.0, //The compatibility constant for excess genes.
