@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import { Config } from '../interfaces';
 import { defaultConfig } from '../defaultConfig';
 
-export class Experiment {
+class Experiment {
 	private innovations = new Array<Array<number>>();
   private innovationCount: number = 0;
   public config: Config = defaultConfig;

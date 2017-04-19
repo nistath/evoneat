@@ -13,5 +13,5 @@ const FARM_OPTIONS = {
 */
 /// <reference path="modules/experiment.ts" />
 
-import { Experiment } from './modules/experiment';
+//import { Experiment } from './modules/experiment';
 var experiment = new Experiment(1,2,3,3);
